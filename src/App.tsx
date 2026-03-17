@@ -3,8 +3,16 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import { Layout } from "@/components/Layout";
+import Index from "./pages/Index";
+import Subjects from "./pages/Subjects";
+import Planner from "./pages/Planner";
+import Tasks from "./pages/Tasks";
+import Revision from "./pages/Revision";
+import PYQ from "./pages/PYQ";
+import Quizzes from "./pages/Quizzes";
+import Analytics from "./pages/Analytics";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -14,11 +22,19 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/subjects" element={<Subjects />} />
+            <Route path="/planner" element={<Planner />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/revision" element={<Revision />} />
+            <Route path="/pyq" element={<PYQ />} />
+            <Route path="/quizzes" element={<Quizzes />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Layout>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
