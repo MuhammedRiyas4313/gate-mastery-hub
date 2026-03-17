@@ -78,6 +78,9 @@ export default function Analytics() {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Activity Heatmap */}
+      <ActivityHeatmap />
     </div>
   );
 }
