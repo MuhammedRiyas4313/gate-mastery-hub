@@ -1,6 +1,7 @@
 import { useStore } from "@/store/useStore";
 import { useMemo } from "react";
 import { ProgressRing } from "@/components/ProgressRing";
+import { ActivityHeatmap } from "@/components/ActivityHeatmap";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 export default function Analytics() {
@@ -77,6 +78,9 @@ export default function Analytics() {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Activity Heatmap */}
+      <ActivityHeatmap />
     </div>
   );
 }
