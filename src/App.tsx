@@ -7,10 +7,10 @@ import { Layout } from "@/components/Layout";
 import Index from "./pages/Index";
 import Subjects from "./pages/Subjects";
 import Planner from "./pages/Planner";
-import Tasks from "./pages/Tasks";
 import Revision from "./pages/Revision";
 import PYQ from "./pages/PYQ";
 import Quizzes from "./pages/Quizzes";
+import DPPPage from "./pages/DPP";
 import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
 
@@ -27,10 +27,10 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/subjects" element={<Subjects />} />
             <Route path="/planner" element={<Planner />} />
-            <Route path="/tasks" element={<Tasks />} />
             <Route path="/revision" element={<Revision />} />
             <Route path="/pyq" element={<PYQ />} />
             <Route path="/quizzes" element={<Quizzes />} />
+            <Route path="/dpp" element={<DPPPage />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

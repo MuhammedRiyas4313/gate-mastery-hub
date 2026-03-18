@@ -1,4 +1,4 @@
-import { Home, BookOpen, CalendarDays, CheckSquare, RefreshCw, FileText, FlaskConical, BarChart3 } from "lucide-react";
+import { Home, BookOpen, CalendarDays, RefreshCw, FileText, FlaskConical, BarChart3, ClipboardList } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -16,10 +16,10 @@ const items = [
   { title: "Dashboard", url: "/", icon: Home, emoji: "🏠" },
   { title: "Subjects", url: "/subjects", icon: BookOpen, emoji: "📚" },
   { title: "Planner", url: "/planner", icon: CalendarDays, emoji: "📅" },
-  { title: "Tasks", url: "/tasks", icon: CheckSquare, emoji: "✅" },
   { title: "Revision", url: "/revision", icon: RefreshCw, emoji: "🔁" },
   { title: "PYQ", url: "/pyq", icon: FileText, emoji: "📝" },
   { title: "Quizzes", url: "/quizzes", icon: FlaskConical, emoji: "🧪" },
+  { title: "DPP", url: "/dpp", icon: ClipboardList, emoji: "📋" },
   { title: "Analytics", url: "/analytics", icon: BarChart3, emoji: "📊" },
 ];
 

@@ -5,7 +5,8 @@ import { useMemo } from "react";
 
 export function TopBar() {
   const gateExamDate = useStore((s) => s.gateExamDate);
-  const tasks = useStore((s) => s.tasks);
+  const revisions = useStore((s) => s.revisions);
+  const dpps = useStore((s) => s.dpps);
 
   const daysToGate = useMemo(() => {
     const now = new Date();
@@ -13,13 +14,16 @@ export function TopBar() {
     return Math.max(0, Math.ceil((exam.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
   }, [gateExamDate]);
 
-  const today = new Date().toLocaleDateString('en-US', {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayFormatted = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'short', day: 'numeric', year: 'numeric',
   });
 
-  const overdueTasks = tasks.filter(
-    (t) => t.status === 'pending' && t.dueDate < new Date().toISOString().split('T')[0]
+  const overdueRevisions = revisions.filter(
+    (r) => (r.status === 'pending' || r.status === 'snoozed') && r.scheduledDate < todayStr
   ).length;
+  const overdueDPPs = dpps.filter((d) => d.status === 'pending' && d.date < todayStr).length;
+  const overdueCount = overdueRevisions + overdueDPPs;
 
   return (
     <header className="h-14 flex items-center justify-between border-b border-border px-4 bg-surface/50 backdrop-blur-sm">
@@ -27,7 +31,7 @@ export function TopBar() {
         <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Calendar className="h-3.5 w-3.5" />
-          <span>{today}</span>
+          <span>{todayFormatted}</span>
         </div>
       </div>
 
@@ -39,9 +43,9 @@ export function TopBar() {
 
         <button className="relative p-2 rounded-lg hover:bg-secondary transition-colors">
           <Bell className="h-4 w-4 text-muted-foreground" />
-          {overdueTasks > 0 && (
+          {overdueCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
-              {overdueTasks > 9 ? '9+' : overdueTasks}
+              {overdueCount > 9 ? '9+' : overdueCount}
             </span>
           )}
         </button>
