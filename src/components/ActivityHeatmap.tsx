@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { useStore, Task } from "@/store/useStore";
-import { format, subDays, startOfWeek, addDays, isSameDay, parseISO } from "date-fns";
+import { useStore } from "@/store/useStore";
+import { format, subDays, startOfWeek, addDays } from "date-fns";
 
 const WEEKS = 20;
 const DAYS = 7;
@@ -16,24 +16,26 @@ function getIntensity(count: number, max: number): string {
 }
 
 export function ActivityHeatmap() {
-  const { tasks } = useStore();
+  const { topics, revisions, dpps } = useStore();
 
   const { grid, max } = useMemo(() => {
     const today = new Date();
     const start = startOfWeek(subDays(today, (WEEKS - 1) * 7), { weekStartsOn: 1 });
 
-    // Count completed tasks per day
+    // Count completed activities per day
     const countMap = new Map<string, number>();
-    tasks.forEach((t: Task) => {
-      if (t.status === "done" && t.completedAt) {
-        const key = t.completedAt.slice(0, 10);
-        countMap.set(key, (countMap.get(key) || 0) + 1);
-      }
-    });
+    const addCount = (dateStr?: string) => {
+      if (!dateStr) return;
+      const key = dateStr.slice(0, 10);
+      countMap.set(key, (countMap.get(key) || 0) + 1);
+    };
+
+    topics.forEach((t) => { if (t.lectureStatus === 'done' && t.lectureCompletedAt) addCount(t.lectureCompletedAt); });
+    revisions.forEach((r) => { if (r.status === 'done' && r.completedAt) addCount(r.completedAt); });
+    dpps.forEach((d) => { if (d.status === 'done' && d.completedAt) addCount(d.completedAt); });
 
     let maxCount = 1;
     const weeks: { date: Date; count: number }[][] = [];
-
     for (let w = 0; w < WEEKS; w++) {
       const week: { date: Date; count: number }[] = [];
       for (let d = 0; d < DAYS; d++) {
@@ -45,23 +47,18 @@ export function ActivityHeatmap() {
       }
       weeks.push(week);
     }
-
     return { grid: weeks, max: maxCount };
-  }, [tasks]);
+  }, [topics, revisions, dpps]);
 
   return (
     <div className="bg-card rounded-xl p-6">
       <h3 className="font-heading text-base font-semibold mb-4">Study Activity Heatmap</h3>
       <div className="flex gap-1.5 overflow-x-auto pb-2">
-        {/* Day labels */}
         <div className="flex flex-col gap-[3px] mr-1 shrink-0">
           {DAY_LABELS.map((label, i) => (
-            <span key={i} className="text-[10px] text-muted-foreground h-[14px] leading-[14px]">
-              {label}
-            </span>
+            <span key={i} className="text-[10px] text-muted-foreground h-[14px] leading-[14px]">{label}</span>
           ))}
         </div>
-        {/* Weeks */}
         {grid.map((week, wi) => (
           <div key={wi} className="flex flex-col gap-[3px]">
             {week.map((day, di) => (
@@ -69,13 +66,12 @@ export function ActivityHeatmap() {
                 key={di}
                 className="w-[14px] h-[14px] rounded-sm transition-colors"
                 style={{ backgroundColor: getIntensity(day.count, max) }}
-                title={`${format(day.date, "MMM d, yyyy")}: ${day.count} tasks`}
+                title={`${format(day.date, "MMM d, yyyy")}: ${day.count} activities`}
               />
             ))}
           </div>
         ))}
       </div>
-      {/* Legend */}
       <div className="flex items-center gap-1.5 mt-3">
         <span className="text-[10px] text-muted-foreground">Less</span>
         {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
@@ -83,10 +79,7 @@ export function ActivityHeatmap() {
             key={i}
             className="w-[14px] h-[14px] rounded-sm"
             style={{
-              backgroundColor:
-                ratio === 0
-                  ? "hsl(var(--secondary))"
-                  : `hsl(var(--accent) / ${ratio <= 0.25 ? 0.3 : ratio <= 0.5 ? 0.5 : ratio <= 0.75 ? 0.75 : 1})`,
+              backgroundColor: ratio === 0 ? "hsl(var(--secondary))" : `hsl(var(--accent) / ${ratio <= 0.25 ? 0.3 : ratio <= 0.5 ? 0.5 : ratio <= 0.75 ? 0.75 : 1})`,
             }}
           />
         ))}
