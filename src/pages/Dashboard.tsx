@@ -1,59 +1,40 @@
-import { useStore } from "@/store/useStore";
-import { useMemo, useEffect } from "react";
+import { useDashboard } from "@/hooks/useDashboard";
+import { useMemo } from "react";
 import { ProgressRing } from "@/components/ProgressRing";
-import { CheckCircle2, Circle, Clock, Flame, BookOpen, RefreshCw } from "lucide-react";
+import { CheckCircle2, Circle, Clock, Flame, BookOpen, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const todayStr = () => new Date().toISOString().split('T')[0];
-
 export default function Dashboard() {
-  const { subjects, chapters, topics, revisions, dpps, streak, updateStreak, gateExamDate, toggleLecture, markRevisionDone, snoozeRevision, toggleDPPStatus } = useStore();
+  const { 
+    data: dashboard, 
+    isLoading, 
+    error,
+    toggleLecture,
+    updateDPP,
+    updateRevision
+  } = useDashboard();
 
-  useEffect(() => { updateStreak(); }, [updateStreak]);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+      </div>
+    );
+  }
 
-  const tStr = todayStr();
+  if (error || !dashboard) {
+    return (
+      <div className="p-10 text-center">
+        <h2 className="text-xl font-bold text-destructive">Error loading dashboard</h2>
+        <p className="text-muted-foreground mt-2">Make sure your backend is running at http://localhost:4000</p>
+      </div>
+    );
+  }
 
-  const daysToGate = useMemo(() => {
-    const now = new Date();
-    const exam = new Date(gateExamDate);
-    return Math.max(0, Math.ceil((exam.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-  }, [gateExamDate]);
+  const { todayTopics, todayDPP, revisionsToday, studyStreak, gateCountdownDays, subjectProgress } = dashboard;
 
-  // Today's topics (taught today)
-  const todayTopics = useMemo(() => topics.filter((t) => t.dateTaught === tStr), [topics, tStr]);
-
-  // Today's DPP
-  const todayDPP = useMemo(() => dpps.find((d) => d.date === tStr), [dpps, tStr]);
-
-  // Revisions due today
-  const revisionsDueToday = useMemo(() =>
-    revisions.filter((r) => (r.status === 'pending' || r.status === 'snoozed') && r.scheduledDate === tStr),
-    [revisions, tStr]
-  );
-
-  // Overdue revisions
-  const overdueRevisions = useMemo(() =>
-    revisions.filter((r) => (r.status === 'pending' || r.status === 'snoozed') && r.scheduledDate < tStr),
-    [revisions, tStr]
-  );
-
-  // Subject progress
-  const subjectProgress = useMemo(() =>
-    subjects.filter((s) => s.isActive).map((sub) => {
-      const subTopics = topics.filter((t) => t.subjectId === sub.id);
-      const done = subTopics.filter((t) => t.lectureStatus === 'done').length;
-      const total = subTopics.length;
-      return { ...sub, percent: total > 0 ? (done / total) * 100 : 0, done, total };
-    }),
-    [subjects, topics]
-  );
-
-  const getTopic = (topicId: string) => topics.find((t) => t.id === topicId);
-  const getChapter = (chapterId: string) => chapters.find((c) => c.id === chapterId);
-  const getSubject = (subjectId: string) => subjects.find((s) => s.id === subjectId);
-
-  // Week strip
-  const weekDays = useMemo(() => {
+  // Week strip (mocked locally for UI but uses current date)
+  const weekDays = (() => {
     const days = [];
     const now = new Date();
     const startOfWeek = new Date(now);
@@ -62,32 +43,48 @@ export default function Dashboard() {
       const d = new Date(startOfWeek);
       d.setDate(startOfWeek.getDate() + i);
       const dateStr = d.toISOString().split('T')[0];
-      const dayRevs = revisions.filter((r) => r.scheduledDate === dateStr && r.status === 'done').length;
-      const dayPending = revisions.filter((r) => r.scheduledDate === dateStr && r.status === 'pending').length;
+      const isToday = dateStr === new Date().toISOString().split('T')[0];
       days.push({
         date: dateStr,
         day: d.toLocaleDateString('en-US', { weekday: 'short' }),
         num: d.getDate(),
-        isToday: dateStr === tStr,
-        hasDone: dayRevs > 0,
-        hasPending: dayPending > 0,
+        isToday,
+        hasDone: false, // Could be derived from analytics if needed
+        hasPending: true,
       });
     }
     return days;
-  }, [tStr, revisions]);
+  })();
+
+  const handleToggleLecture = (topic: any) => {
+    const newStatus = topic.lecture?.status === 'DONE' ? 'PENDING' : 'DONE';
+    toggleLecture.mutate({ topicId: topic.id, status: newStatus });
+  };
+
+  const handleToggleDPP = () => {
+    if (!todayDPP) return;
+    const newStatus = todayDPP.status === 'DONE' ? 'PENDING' : 'DONE';
+    updateDPP.mutate({ id: todayDPP.id, status: newStatus });
+  };
+
+  const handleRevisionAction = (id: string, status: 'DONE' | 'SNOOZED') => {
+    updateRevision.mutate({ id, status });
+  };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Today's Focus</h1>
+          <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">Today's Focus</h1>
           <p className="text-sm text-muted-foreground mt-1">Stay on track. One topic at a time.</p>
         </div>
-        <div className="flex items-center gap-2 bg-card px-4 py-2 rounded-xl">
-          <Flame className="h-5 w-5 text-primary" />
-          <span className="font-mono font-bold text-lg text-foreground">{streak}</span>
-          <span className="text-xs text-muted-foreground">day streak</span>
+        <div className="flex items-center gap-3 bg-card/50 backdrop-blur-sm border border-primary/10 px-5 py-3 rounded-2xl shadow-sm">
+          <Flame className="h-6 w-6 text-primary animate-pulse" />
+          <div>
+            <span className="block font-mono font-bold text-2xl leading-none text-foreground">{studyStreak || 0}</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">day streak</span>
+          </div>
         </div>
       </div>
 
@@ -96,163 +93,196 @@ export default function Dashboard() {
         {weekDays.map((d) => (
           <div
             key={d.date}
-            className={`flex-1 flex flex-col items-center py-2.5 rounded-xl text-xs transition-colors ${
-              d.isToday ? 'bg-primary/15 text-primary border border-primary/30' : 'bg-card text-muted-foreground'
+            className={`flex-1 flex flex-col items-center py-3.5 rounded-2xl text-xs transition-all duration-300 transform hover:scale-105 border ${
+              d.isToday 
+                ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20' 
+                : 'bg-card/50 text-muted-foreground border-primary/5 hover:border-primary/20 hover:bg-card'
             }`}
           >
-            <span className="font-medium">{d.day}</span>
-            <span className={`font-mono text-lg font-bold mt-0.5 ${d.isToday ? 'text-primary' : 'text-foreground'}`}>{d.num}</span>
-            <div className="flex gap-0.5 mt-1">
+            <span className="font-semibold opacity-80 uppercase tracking-tighter">{d.day}</span>
+            <span className={`font-mono text-xl font-bold mt-1 ${d.isToday ? 'text-white' : 'text-foreground'}`}>{d.num}</span>
+            <div className="flex gap-1 mt-2">
               {d.hasDone && <div className="w-1.5 h-1.5 rounded-full bg-success" />}
-              {d.hasPending && <div className="w-1.5 h-1.5 rounded-full bg-warning" />}
+              {d.hasPending && <div className={`w-1.5 h-1.5 rounded-full ${d.isToday ? 'bg-white' : 'bg-warning'}`} />}
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          {/* Overdue */}
-          {overdueRevisions.length > 0 && (
-            <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4">
-              <h3 className="font-heading text-sm font-semibold text-destructive flex items-center gap-2 mb-3">
-                <Clock className="h-4 w-4" /> {overdueRevisions.length} Overdue Revisions
-              </h3>
-              <div className="space-y-2">
-                {overdueRevisions.slice(0, 5).map((rev) => {
-                  const topic = getTopic(rev.topicId);
-                  const sub = topic ? getSubject(topic.subjectId) : undefined;
-                  return (
-                    <div key={rev.id} className="flex items-center gap-3 text-sm">
-                      <span className="text-xs font-mono bg-accent/10 text-accent px-1.5 py-0.5 rounded">R{rev.revisionNumber}</span>
-                      <span className="text-foreground">{topic?.name}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">{sub?.name}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6">
           {/* Today's Topics */}
-          <div className="bg-card rounded-xl p-5">
-            <h3 className="font-heading text-base font-semibold mb-4 flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-primary" /> Today's Topics
-              <span className="ml-auto text-xs font-mono text-muted-foreground">
-                {todayTopics.filter((t) => t.lectureStatus === 'done').length}/{todayTopics.length}
+          <div className="bg-card/50 backdrop-blur-sm border border-primary/5 rounded-3xl p-6 shadow-sm">
+            <h3 className="font-heading text-lg font-bold mb-5 flex items-center gap-3 text-foreground">
+              <div className="p-2 rounded-xl bg-primary/10">
+                <BookOpen className="h-5 w-5 text-primary" />
+              </div>
+              New Topics Taught
+              <span className="ml-auto text-xs font-mono font-medium py-1 px-3 rounded-full bg-secondary text-secondary-foreground">
+                {todayTopics.filter((t: any) => t.lecture?.status === 'DONE').length}/{todayTopics.length}
               </span>
             </h3>
             {todayTopics.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No topics taught today ✨</p>
+              <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+                <div className="w-16 h-16 rounded-full bg-secondary/30 flex items-center justify-center">
+                  <span className="text-2xl">✨</span>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">All Clear!</p>
+                  <p className="text-xs text-muted-foreground">No new topics scheduled for today.</p>
+                </div>
+              </div>
             ) : (
-              <div className="space-y-2">
-                {todayTopics.map((topic) => {
-                  const sub = getSubject(topic.subjectId);
-                  const chap = getChapter(topic.chapterId);
-                  return (
-                    <div
-                      key={topic.id}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer hover:bg-secondary/50 transition-colors ${topic.lectureStatus === 'done' ? 'opacity-60' : ''}`}
-                      onClick={() => toggleLecture(topic.id)}
-                    >
-                      {topic.lectureStatus === 'done' ? <CheckCircle2 className="h-4 w-4 text-success shrink-0" /> : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
-                      <span className="text-xs font-mono px-1.5 py-0.5 rounded shrink-0" style={{ background: sub?.color + '20', color: sub?.color }}>L</span>
-                      <span className={`text-sm ${topic.lectureStatus === 'done' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{topic.name}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">{chap?.name}</span>
+              <div className="space-y-3">
+                {todayTopics.map((topic: any) => (
+                  <div
+                    key={topic.id}
+                    className={`group flex items-center gap-4 px-4 py-4 rounded-2xl cursor-pointer bg-background/40 border border-primary/5 hover:border-primary/20 hover:bg-background transition-all duration-300 ${topic.lecture?.status === 'DONE' ? 'opacity-60 grayscale-[0.5]' : ''}`}
+                    onClick={() => handleToggleLecture(topic)}
+                  >
+                    <div className="transition-transform group-hover:scale-110">
+                      {topic.lecture?.status === 'DONE' ? (
+                        <CheckCircle2 className="h-6 w-6 text-success shrink-0" />
+                      ) : (
+                        <Circle className="h-6 w-6 text-muted-foreground/30 shrink-0" />
+                      )}
                     </div>
-                  );
-                })}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[10px] font-bold tracking-widest uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-md">Lecture</span>
+                        <span className="text-xs text-muted-foreground truncate opacity-70 italic">{topic.chapter?.name}</span>
+                      </div>
+                      <p className={`text-sm font-bold truncate ${topic.lecture?.status === 'DONE' ? 'line-through text-muted-foreground font-medium' : 'text-foreground'}`}>
+                        {topic.name}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
           {/* Today's DPP */}
           {todayDPP && (
-            <div className="bg-card rounded-xl p-5">
-              <h3 className="font-heading text-base font-semibold mb-3 flex items-center gap-2">
-                📋 Today's DPP
+            <div className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-card to-card border border-primary/10 rounded-3xl p-6 shadow-md group">
+              <div className="absolute top-0 right-0 p-8 opacity-5 transition-transform group-hover:scale-110 group-hover:rotate-12 translate-x-4 -translate-y-4">
+                 <BookOpen className="h-32 w-32" />
+              </div>
+              <h3 className="font-heading text-lg font-bold mb-4 flex items-center gap-3">
+                <span className="text-2xl">📋</span> Daily Practice Paper
               </h3>
-              <div className="flex items-center justify-between">
-                <div className="flex flex-wrap gap-1.5">
-                  {todayDPP.subjectTags.map((sid) => {
-                    const s = getSubject(sid);
-                    return s ? <span key={sid} className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: s.color + '20', color: s.color }}>{s.icon} {s.name}</span> : null;
-                  })}
+              <div className="flex items-end justify-between relative z-10">
+                <div className="space-y-3">
+                   <p className="text-sm text-muted-foreground font-medium max-w-[200px]">Test your understanding of today's topics with targeted practice.</p>
+                   <div className="flex flex-wrap gap-1.5">
+                    {todayDPP.tags.map((tag: any, i: number) => {
+                      const s = tag.subject;
+                      return s ? (
+                        <span key={i} className="text-[10px] font-bold px-2.5 py-1 rounded-lg border border-primary/10" style={{ background: s.color + '15', color: s.color }}>
+                          {s.name}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
                 </div>
                 <Button
-                  size="sm"
-                  variant={todayDPP.status === 'done' ? 'secondary' : 'default'}
-                  className="h-7 text-xs"
-                  onClick={() => toggleDPPStatus(todayDPP.id)}
+                  size="lg"
+                  variant={todayDPP.status === 'DONE' ? 'secondary' : 'default'}
+                  className={`h-12 px-8 rounded-2xl font-bold transition-all shadow-lg ${todayDPP.status === 'DONE' ? 'bg-success/10 text-success border-success/20 hover:bg-success/20' : 'shadow-primary/20'}`}
+                  onClick={handleToggleDPP}
+                  disabled={updateDPP.isPending}
                 >
-                  {todayDPP.status === 'done' ? '✓ Done' : 'Mark Done'}
+                  {updateDPP.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  {todayDPP.status === 'DONE' ? '✓ Completed' : 'Start Solving'}
                 </Button>
               </div>
             </div>
           )}
 
           {/* Revisions due today */}
-          {revisionsDueToday.length > 0 && (
-            <div className="bg-accent/5 border border-accent/20 rounded-xl p-5">
-              <h3 className="font-heading text-base font-semibold mb-4 flex items-center gap-2 text-accent">
-                <RefreshCw className="h-4 w-4" /> Revisions Due Today ({revisionsDueToday.length})
+          {revisionsToday.length > 0 && (
+            <div className="bg-card/50 backdrop-blur-sm border border-accent/10 rounded-3xl p-6 shadow-sm">
+              <h3 className="font-heading text-lg font-bold mb-6 flex items-center gap-3 text-accent">
+                <div className="p-2 rounded-xl bg-accent/10">
+                  <RefreshCw className="h-5 w-5" />
+                </div>
+                Review & Optimize ({revisionsToday.length})
               </h3>
-              <div className="space-y-2">
-                {revisionsDueToday.map((rev) => {
-                  const topic = getTopic(rev.topicId);
-                  const sub = topic ? getSubject(topic.subjectId) : undefined;
-                  const chap = topic ? getChapter(topic.chapterId) : undefined;
-                  return (
-                    <div key={rev.id} className="flex items-center justify-between bg-card rounded-lg px-3 py-2.5">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg">{sub?.icon}</span>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{topic?.name}</p>
-                          <p className="text-xs text-muted-foreground">{chap?.name} · {sub?.name}</p>
-                        </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {revisionsToday.map((rev: any) => (
+                  <div key={rev.id} className="flex flex-col justify-between bg-background/60 border border-accent/5 rounded-2xl p-4 hover:border-accent/30 transition-all group">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <span className="text-[10px] font-bold tracking-widest uppercase bg-accent/10 text-accent px-2.5 py-1 rounded-md mb-2 inline-block">R{rev.revisionNumber}</span>
+                        <p className="text-sm font-bold text-foreground line-clamp-2 leading-tight">{rev.topic?.name}</p>
+                        <p className="text-[10px] font-medium text-muted-foreground mt-1 opacity-70 uppercase truncate">{rev.topic?.chapter?.name}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono bg-accent/10 text-accent px-2 py-1 rounded">R{rev.revisionNumber}</span>
-                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => snoozeRevision(rev.id)}>Snooze</Button>
-                        <Button size="sm" className="h-7 text-xs" onClick={() => markRevisionDone(rev.id)}>Done</Button>
-                      </div>
+                      <span className="text-2xl p-2 rounded-xl bg-accent/5">
+                        {rev.topic?.subject?.icon || '📚'}
+                      </span>
                     </div>
-                  );
-                })}
+                    <div className="flex items-center gap-2 pt-2">
+                       <Button size="sm" variant="ghost" className="flex-1 h-9 rounded-xl text-xs font-semibold hover:bg-accent/10 text-muted-foreground hover:text-accent" onClick={() => handleRevisionAction(rev.id, 'SNOOZED')}>Snooze</Button>
+                       <Button size="sm" className="flex-1 h-9 rounded-xl text-xs font-bold bg-accent hover:bg-accent/80 text-white shadow-sm" onClick={() => handleRevisionAction(rev.id, 'DONE')}>Review Done</Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
         </div>
 
         {/* Right sidebar */}
-        <div className="space-y-4">
-          <div className="bg-card rounded-xl p-5 text-center">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">GATE Exam In</p>
-            <p className="font-mono text-4xl font-bold text-primary mt-2">{daysToGate}</p>
-            <p className="text-xs text-muted-foreground mt-1">days remaining</p>
+        <div className="space-y-6">
+          <div className="relative overflow-hidden bg-primary text-primary-foreground rounded-3xl p-8 shadow-xl shadow-primary/20 group">
+             <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
+             <p className="text-xs font-bold text-primary-foreground/70 uppercase tracking-[0.2em]">GATE Countdown</p>
+             <div className="flex items-baseline gap-2 mt-4">
+               <p className="font-mono text-6xl font-black tracking-tighter">{gateCountdownDays || 0}</p>
+               <p className="text-sm font-bold text-primary-foreground/60 uppercase">Days</p>
+             </div>
+             <div className="mt-6 w-full bg-white/20 h-1.5 rounded-full overflow-hidden">
+               <div className="bg-white h-full w-2/3" />
+             </div>
           </div>
 
-          <div className="bg-card rounded-xl p-5">
-            <h3 className="font-heading text-sm font-semibold mb-4">Subject Progress</h3>
-            <div className="flex flex-wrap justify-center gap-4">
-              {subjectProgress.map((sub) => (
-                <ProgressRing key={sub.id} percent={sub.percent} color={sub.color} label={sub.name} size={72} strokeWidth={5} />
+          <div className="bg-card/50 backdrop-blur-sm border border-primary/5 rounded-3xl p-6 shadow-sm">
+            <h3 className="font-heading text-base font-bold mb-6">Mastery Level</h3>
+            <div className="space-y-6">
+              {subjectProgress.map((stat: any) => (
+                <div key={stat.subject.id} className="space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold flex items-center gap-2">
+                      <span className="text-lg">{stat.subject.icon}</span> {stat.subject.name}
+                    </span>
+                    <span className="font-mono text-muted-foreground font-bold">{Math.round(stat.progressPercent)}%</span>
+                  </div>
+                  <div className="w-full bg-secondary/50 h-2 rounded-full overflow-hidden p-0.5 border border-primary/5">
+                    <div 
+                      className="h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(0,0,0,0.1)]" 
+                      style={{ 
+                        width: `${stat.progressPercent}%`, 
+                        backgroundColor: stat.subject.color,
+                        boxShadow: `0 0 15px ${stat.subject.color}40`
+                      }} 
+                    />
+                  </div>
+                </div>
               ))}
             </div>
           </div>
 
-          <div className="bg-card rounded-xl p-5 space-y-3">
-            <h3 className="font-heading text-sm font-semibold">Quick Stats</h3>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="bg-card/50 backdrop-blur-sm border border-primary/5 rounded-3xl p-6 space-y-5">
+            <h3 className="font-heading text-base font-bold">Session Stats</h3>
+            <div className="grid grid-cols-2 gap-4">
               {[
-                { label: 'Topics', value: topics.length, color: 'text-foreground' },
-                { label: 'Lectures Done', value: topics.filter((t) => t.lectureStatus === 'done').length, color: 'text-success' },
-                { label: 'Revisions Done', value: revisions.filter((r) => r.status === 'done').length, color: 'text-accent' },
-                { label: 'Overdue', value: overdueRevisions.length, color: 'text-destructive' },
+                { label: 'Total Topics', value: dashboard.todayTopics.length + dashboard.revisionsToday.length, color: 'text-foreground', icon: '🎯' },
+                { label: 'Completed', value: dashboard.todayTopics.filter((t: any) => t.lecture?.status === 'DONE').length, color: 'text-success', icon: '✅' },
               ].map((stat) => (
-                <div key={stat.label} className="bg-secondary/50 rounded-lg p-2.5 text-center">
-                  <p className={`font-mono text-lg font-bold ${stat.color}`}>{stat.value}</p>
-                  <p className="text-[10px] text-muted-foreground">{stat.label}</p>
+                <div key={stat.label} className="bg-background/40 border border-primary/5 rounded-2xl p-4 text-center group hover:border-primary/20 transition-all">
+                  <div className="text-xl mb-1">{stat.icon}</div>
+                  <p className={`font-mono text-2xl font-black ${stat.color}`}>{stat.value}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</p>
                 </div>
               ))}
             </div>

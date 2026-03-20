@@ -1,131 +1,165 @@
-import { useStore } from "@/store/useStore";
+import { useRevisions } from "@/hooks/useRevisions";
 import { useMemo } from "react";
-import { RefreshCw, Clock, CheckCircle2, AlarmClock, SkipForward } from "lucide-react";
+import { RefreshCw, Clock, CheckCircle2, AlarmClock, SkipForward, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const todayStr = () => new Date().toISOString().split('T')[0];
-const addDays = (dateStr: string, days: number) => {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
-};
 
 export default function Revision() {
-  const { subjects, chapters, topics, revisions, markRevisionDone, snoozeRevision, skipRevision } = useStore();
+  const { data: revisions, isLoading, updateStatus } = useRevisions();
   const tStr = todayStr();
 
-  const dueToday = useMemo(() =>
-    revisions.filter((r) => (r.status === 'pending' || r.status === 'snoozed') && r.scheduledDate === tStr),
-    [revisions, tStr]
-  );
-  const overdue = useMemo(() =>
-    revisions.filter((r) => (r.status === 'pending' || r.status === 'snoozed') && r.scheduledDate < tStr),
-    [revisions, tStr]
-  );
-  const upcoming = useMemo(() =>
-    revisions.filter((r) => r.status === 'pending' && r.scheduledDate > tStr && r.scheduledDate <= addDays(tStr, 7)),
-    [revisions, tStr]
-  );
-  const completed = useMemo(() => revisions.filter((r) => r.status === 'done'), [revisions]);
+  const categories = useMemo(() => {
+    if (!revisions) return { dueToday: [], overdue: [], upcoming: [], completed: [] };
+    
+    return {
+      dueToday: revisions.filter((r: any) => (r.status === 'PENDING' || r.status === 'SNOOZED') && r.scheduledDate.split('T')[0] === tStr),
+      overdue: revisions.filter((r: any) => (r.status === 'PENDING' || r.status === 'SNOOZED') && r.scheduledDate.split('T')[0] < tStr),
+      upcoming: revisions.filter((r: any) => r.status === 'PENDING' && r.scheduledDate.split('T')[0] > tStr),
+      completed: revisions.filter((r: any) => r.status === 'DONE'),
+    };
+  }, [revisions, tStr]);
 
-  const getTopic = (topicId: string) => topics.find((t) => t.id === topicId);
-  const getChapter = (chapterId: string) => chapters.find((c) => c.id === chapterId);
-  const getSubject = (subjectId: string) => subjects.find((s) => s.id === subjectId);
-
-  const RevisionCard = ({ rev, showActions = false }: { rev: typeof revisions[0]; showActions?: boolean }) => {
-    const topic = getTopic(rev.topicId);
-    const chap = topic ? getChapter(topic.chapterId) : undefined;
-    const sub = topic ? getSubject(topic.subjectId) : undefined;
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-between bg-card rounded-xl px-4 py-3">
-        <div className="flex items-center gap-3">
-          <span className="text-xl">{sub?.icon}</span>
-          <div>
-            <p className="text-sm font-medium text-foreground">{topic?.name}</p>
-            <p className="text-xs text-muted-foreground">{chap?.name} · {sub?.name}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono bg-accent/10 text-accent px-2 py-1 rounded">R{rev.revisionNumber}</span>
-          {showActions ? (
-            <>
-              <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => skipRevision(rev.id)}>
-                <SkipForward className="h-3 w-3 mr-1" /> Skip
-              </Button>
-              <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => snoozeRevision(rev.id)}>
-                <AlarmClock className="h-3 w-3 mr-1" /> Snooze
-              </Button>
-              <Button size="sm" className="h-7 text-xs" onClick={() => markRevisionDone(rev.id)}>
-                <CheckCircle2 className="h-3 w-3 mr-1" /> Done
-              </Button>
-            </>
-          ) : (
-            <span className="text-xs font-mono text-muted-foreground">{rev.scheduledDate}</span>
-          )}
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
       </div>
     );
+  }
+
+  const handleAction = (id: string, status: 'DONE' | 'SNOOZED' | 'SKIPPED') => {
+    updateStatus.mutate({ id, status });
   };
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-bold">Revision Center</h1>
-        <p className="text-sm text-muted-foreground mt-1">Spaced repetition: Day 1 → 3 → 7 → 14 → 30</p>
-      </div>
-
-      {/* Overdue */}
-      {overdue.length > 0 && (
-        <div>
-          <h2 className="font-heading text-base font-semibold mb-3 flex items-center gap-2 text-destructive">
-            <Clock className="h-4 w-4" /> Overdue ({overdue.length})
-          </h2>
-          <div className="space-y-2">
-            {overdue.map((r) => <RevisionCard key={r.id} rev={r} showActions />)}
-          </div>
+  const RevisionCard = ({ rev, showActions = false }: { rev: any; showActions?: boolean }) => (
+    <div className="group flex flex-col sm:flex-row sm:items-center justify-between bg-card/50 backdrop-blur-sm border border-primary/5 rounded-3xl px-6 py-5 hover:border-primary/20 hover:bg-card transition-all duration-300 gap-4">
+      <div className="flex items-center gap-5">
+        <div className="w-14 h-14 bg-secondary/40 rounded-2xl flex items-center justify-center text-3xl shadow-inner group-hover:scale-110 transition-transform">
+          {rev.topic?.subject?.icon}
         </div>
-      )}
-
-      {/* Due today */}
-      <div>
-        <h2 className="font-heading text-base font-semibold mb-3 flex items-center gap-2 text-primary">
-          <RefreshCw className="h-4 w-4" /> Due Today ({dueToday.length})
-        </h2>
-        {dueToday.length === 0 ? (
-          <div className="bg-card rounded-xl p-8 text-center">
-            <p className="text-sm text-muted-foreground">No revisions due today 🎉</p>
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+             <span className="text-[10px] font-bold tracking-widest uppercase bg-accent/10 text-accent px-2 py-0.5 rounded-md">R{rev.revisionNumber}</span>
+             <span className="text-[10px] font-bold text-muted-foreground opacity-60 uppercase">{rev.topic?.subject?.name}</span>
           </div>
+          <p className="text-sm font-bold text-foreground leading-tight group-hover:text-primary transition-colors">{rev.topic?.name}</p>
+          <p className="text-[10px] font-medium text-muted-foreground opacity-60 mt-0.5 italic">{rev.topic?.chapter?.name}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {showActions ? (
+          <>
+            <Button size="sm" variant="ghost" className="h-9 px-4 rounded-xl text-xs font-bold text-muted-foreground hover:text-warning hover:bg-warning/10" onClick={() => handleAction(rev.id, 'SNOOZED')} disabled={updateStatus.isPending}>
+              <AlarmClock className="h-3.5 w-3.5 mr-1.5" /> Snooze
+            </Button>
+            <Button size="sm" variant="ghost" className="h-9 px-4 rounded-xl text-xs font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleAction(rev.id, 'SKIPPED')} disabled={updateStatus.isPending}>
+              <SkipForward className="h-3.5 w-3.5 mr-1.5" /> Skip
+            </Button>
+            <Button size="sm" className="h-9 px-5 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20" onClick={() => handleAction(rev.id, 'DONE')} disabled={updateStatus.isPending}>
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Complete
+            </Button>
+          </>
         ) : (
-          <div className="space-y-2">
-            {dueToday.map((r) => <RevisionCard key={r.id} rev={r} showActions />)}
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-[10px] font-black font-mono text-muted-foreground opacity-50 uppercase tracking-widest">{rev.status === 'DONE' ? 'Completed' : 'Scheduled'}</span>
+            <span className="text-[10px] font-bold text-foreground font-mono bg-secondary/50 px-2 py-0.5 rounded-md">
+                {new Date(rev.scheduledDate).toLocaleDateString()}
+            </span>
           </div>
         )}
       </div>
+    </div>
+  );
 
-      {/* Upcoming */}
-      <div>
-        <h2 className="font-heading text-base font-semibold mb-3 flex items-center gap-2 text-muted-foreground">
-          <Clock className="h-4 w-4" /> Upcoming (next 7 days)
-        </h2>
-        {upcoming.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">Nothing upcoming</p>
-        ) : (
-          <div className="space-y-2">
-            {upcoming.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate)).map((r) => <RevisionCard key={r.id} rev={r} />)}
-          </div>
-        )}
+  return (
+    <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-heading text-3xl font-bold tracking-tight">Revision Center</h1>
+          <p className="text-sm text-muted-foreground mt-1">Spaced repetition optimization system</p>
+        </div>
+        <div className="hidden sm:flex items-center gap-6 bg-card/40 border border-primary/5 px-6 py-3 rounded-2xl">
+           <div className="text-center">
+              <p className="text-[10px] font-black text-muted-foreground uppercase opacity-50">Pending</p>
+              <p className="font-mono text-xl font-bold text-foreground">{(categories.dueToday.length + categories.overdue.length) || 0}</p>
+           </div>
+           <div className="w-px h-8 bg-primary/10" />
+           <div className="text-center">
+              <p className="text-[10px] font-black text-muted-foreground uppercase opacity-50">Completed</p>
+              <p className="font-mono text-xl font-bold text-success">{categories.completed.length || 0}</p>
+           </div>
+        </div>
       </div>
 
-      {/* Completed */}
-      <div>
-        <h2 className="font-heading text-base font-semibold mb-3 flex items-center gap-2 text-success">
-          <CheckCircle2 className="h-4 w-4" /> Completed ({completed.length})
-        </h2>
-        {completed.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No completed revisions yet</p>
-        ) : (
-          <div className="space-y-2">
-            {completed.slice(0, 10).map((r) => <RevisionCard key={r.id} rev={r} />)}
+      <div className="space-y-12">
+        {/* Overdue */}
+        {categories.overdue.length > 0 && (
+          <div className="animate-in slide-in-from-top-4 duration-500">
+            <h2 className="font-heading text-sm font-black mb-5 flex items-center gap-3 text-destructive uppercase tracking-[0.2em]">
+               <div className="p-1.5 rounded-lg bg-destructive/10">
+                 <Clock className="h-4 w-4" />
+               </div>
+               Overdue Revisions ({categories.overdue.length})
+            </h2>
+            <div className="space-y-3">
+              {categories.overdue.map((r: any) => <RevisionCard key={r.id} rev={r} showActions />)}
+            </div>
+          </div>
+        )}
+
+        {/* Due today */}
+        <div className="animate-in slide-in-from-top-6 duration-700">
+          <h2 className="font-heading text-sm font-black mb-5 flex items-center gap-3 text-primary uppercase tracking-[0.2em]">
+             <div className="p-1.5 rounded-lg bg-primary/10">
+               <RefreshCw className="h-4 w-4" />
+             </div>
+             Due Today ({categories.dueToday.length})
+          </h2>
+          {categories.dueToday.length === 0 && categories.overdue.length === 0 ? (
+            <div className="bg-card/30 rounded-[2.5rem] border border-dashed border-primary/10 p-16 text-center space-y-4">
+              <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto text-4xl">🧘</div>
+              <div>
+                <h3 className="text-xl font-bold">You're All Caught Up</h3>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-2">No revisions due today. Use this time to learn new topics or refresh old notes.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {categories.dueToday.map((r: any) => <RevisionCard key={r.id} rev={r} showActions />)}
+            </div>
+          )}
+        </div>
+
+        {/* Upcoming */}
+        {categories.upcoming.length > 0 && (
+          <div className="opacity-80 hover:opacity-100 transition-opacity">
+            <h2 className="font-heading text-sm font-black mb-5 flex items-center gap-3 text-muted-foreground uppercase tracking-[0.2em]">
+               <div className="p-1.5 rounded-lg bg-secondary">
+                 <Clock className="h-4 w-4" />
+               </div>
+               Upcoming Schedule
+            </h2>
+            <div className="space-y-3">
+              {categories.upcoming.sort((a: any, b: any) => a.scheduledDate.localeCompare(b.scheduledDate)).slice(0, 10).map((r: any) => (
+                <RevisionCard key={r.id} rev={r} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Completed */}
+        {categories.completed.length > 0 && (
+          <div className="opacity-60 hover:opacity-100 transition-opacity">
+            <h2 className="font-heading text-sm font-black mb-5 flex items-center gap-3 text-success uppercase tracking-[0.2em]">
+               <div className="p-1.5 rounded-lg bg-success/10">
+                 <CheckCircle2 className="h-4 w-4" />
+               </div>
+               Successfully Mastered
+            </h2>
+            <div className="space-y-3">
+              {categories.completed.slice(0, 10).map((r: any) => <RevisionCard key={r.id} rev={r} />)}
+            </div>
           </div>
         )}
       </div>

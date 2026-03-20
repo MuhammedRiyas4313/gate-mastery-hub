@@ -1,164 +1,216 @@
-import { useStore } from "@/store/useStore";
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useMemo } from "react";
+import { ChevronLeft, ChevronRight, Loader2, Calendar as CalendarIcon, BookOpen, RefreshCw } from "lucide-react";
+import { usePlanner } from "@/hooks/usePlanner";
+import { Button } from "@/components/ui/button";
 
 export default function Planner() {
-  const { subjects, topics, revisions, dpps } = useStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
+  
+  const { logs, revisions, isLoading } = usePlanner(currentMonth);
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayOfWeek = new Date(year, month, 1).getDay();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  // Adjust so Monday is 0. standard getDay() is 0 for Sunday
+  const firstDayOfWeek = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
   const todayStr = new Date().toISOString().split('T')[0];
 
   const calendarDays = useMemo(() => {
     const days: (number | null)[] = [];
-    for (let i = 0; i < (firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1); i++) days.push(null);
+    for (let i = 0; i < firstDayOfWeek; i++) days.push(null);
     for (let d = 1; d <= daysInMonth; d++) days.push(d);
     return days;
   }, [daysInMonth, firstDayOfWeek]);
 
-  const getDateStr = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-  const getDayInfo = (day: number) => {
-    const dateStr = getDateStr(day);
-    const dayTopics = topics.filter((t) => t.dateTaught === dateStr);
-    const dayRevisions = revisions.filter((r) => r.scheduledDate === dateStr);
-    const dayDPP = dpps.find((d) => d.date === dateStr);
-    const colors = new Set<string>();
-    dayTopics.forEach((t) => {
-      const sub = subjects.find((s) => s.id === t.subjectId);
-      if (sub) colors.add(sub.color);
-    });
-    dayRevisions.forEach((r) => {
-      const topic = topics.find((t) => t.id === r.topicId);
-      if (topic) {
-        const sub = subjects.find((s) => s.id === topic.subjectId);
-        if (sub) colors.add(sub.color);
-      }
-    });
-    const totalItems = dayTopics.length + dayRevisions.length + (dayDPP ? 1 : 0);
-    const doneItems = dayTopics.filter((t) => t.lectureStatus === 'done').length +
-      dayRevisions.filter((r) => r.status === 'done').length +
-      (dayDPP?.status === 'done' ? 1 : 0);
-    return { colors: Array.from(colors), totalItems, doneItems, dayTopics, dayRevisions, dayDPP };
+  const getDateStr = (day: number) => {
+    const d = new Date(year, month, day, 12);
+    return d.toISOString().split('T')[0];
   };
 
-  const prev = () => setCurrentMonth(new Date(year, month - 1, 1));
-  const next = () => setCurrentMonth(new Date(year, month + 1, 1));
+  const dayData = useMemo(() => {
+    const map: Record<string, any> = {};
+    logs.forEach((log: any) => {
+      const d = log.date.split('T')[0];
+      if (!map[d]) map[d] = { topics: [], revisions: [], markers: new Set() };
+      log.entries?.forEach((e: any) => {
+        if (e.topic) {
+          map[d].topics.push(e.topic);
+          if (e.topic.subject) map[d].markers.add(e.topic.subject.color);
+        }
+      });
+    });
+    revisions.forEach((rev: any) => {
+      const d = rev.scheduledDate.split('T')[0];
+      if (!map[d]) map[d] = { topics: [], revisions: [], markers: new Set() };
+      map[d].revisions.push(rev);
+      if (rev.topic?.subject) map[d].markers.add(rev.topic.subject.color);
+    });
+    return map;
+  }, [logs, revisions]);
 
-  const selectedInfo = selectedDay ? (() => {
-    const day = parseInt(selectedDay.split('-')[2]);
-    return getDayInfo(day);
-  })() : null;
+  const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
+
+  const selectedDayInfo = selectedDate ? dayData[selectedDate] : null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-heading text-3xl font-bold tracking-tight">Daily Planner</h1>
+          <p className="text-sm text-muted-foreground mt-1">Calendar view of your study schedule</p>
+        </div>
+        <div className="flex items-center gap-3 bg-secondary/30 p-1.5 rounded-2xl border border-primary/5">
+           <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(new Date())} className="h-9 w-9 text-xs font-bold rounded-xl hidden sm:flex">Today</Button>
+           <Button variant="ghost" size="icon" onClick={prevMonth} className="h-9 w-9 rounded-xl"><ChevronLeft className="h-5 w-5" /></Button>
+           <h2 className="font-heading font-bold px-4 text-sm w-36 text-center">{currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
+           <Button variant="ghost" size="icon" onClick={nextMonth} className="h-9 w-9 rounded-xl"><ChevronRight className="h-5 w-5" /></Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Calendar grid */}
+        <div className="lg:col-span-7 bg-card/50 backdrop-blur-sm border border-primary/5 rounded-[2.5rem] p-6 shadow-sm overflow-hidden">
+          <div className="grid grid-cols-7 gap-2">
+            {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((d) => (
+              <div key={d} className="text-center text-[10px] font-black text-muted-foreground/50 py-4 tracking-widest">{d}</div>
+            ))}
+            {calendarDays.map((day, i) => {
+              if (!day) return <div key={`empty-${i}`} className="aspect-square opacity-0" />;
+              const dateStr = getDateStr(day);
+              const isToday = dateStr === todayStr;
+              const isSelected = dateStr === selectedDate;
+              const info = dayData[dateStr];
+
+              return (
+                <div
+                  key={day}
+                  onClick={() => setSelectedDate(dateStr)}
+                  className={`relative aspect-square flex flex-col items-center justify-center rounded-2xl text-sm transition-all duration-300 cursor-pointer group border ${
+                    isSelected ? 
+                      'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 transform scale-105 z-10' :
+                      isToday ? 
+                        'bg-primary/10 text-primary border-primary/30' : 
+                        'bg-background/40 hover:bg-background border-transparent hover:border-primary/10'
+                  }`}
+                >
+                  <span className={`font-mono text-base font-bold ${isToday && !isSelected ? 'text-primary' : ''}`}>{day}</span>
+                  {info?.markers.size > 0 && (
+                    <div className="absolute bottom-2.5 flex justify-center gap-1 w-full px-1">
+                      {Array.from(info.markers).slice(0, 4).map((c: any, idx) => (
+                        <div key={idx} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white/80' : ''}`} style={{ background: isSelected ? undefined : c }} />
+                      ))}
+                    </div>
+                  )}
+                  {info?.topics.length > 0 && !isSelected && (
+                     <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {isLoading && (
+            <div className="flex justify-center pt-6">
+              <Loader2 className="h-5 w-5 text-primary animate-spin" />
+            </div>
+          )}
+        </div>
+
+        {/* Selected day content */}
+        <div className="lg:col-span-5 bg-card/50 backdrop-blur-sm border border-primary/5 rounded-[2.5rem] p-8 shadow-sm h-full min-h-[400px]">
+          {selectedDate ? (
+            <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
+              <div className="flex items-center gap-4 border-b border-primary/5 pb-6">
+                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                   <CalendarIcon className="h-7 w-7" />
+                </div>
+                <div>
+                   <h3 className="font-heading text-xl font-bold text-foreground">
+                    {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' })}
+                  </h3>
+                  <p className="text-sm font-bold text-muted-foreground opacity-70">
+                    {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+
+              {selectedDayInfo ? (
+                <div className="space-y-8">
+                  {selectedDayInfo.topics.length > 0 && (
+                    <div className="space-y-4">
+                      <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary/60">
+                        <BookOpen className="h-3 w-3" /> New Topics Learned
+                      </h4>
+                      <div className="space-y-3">
+                        {selectedDayInfo.topics.map((t: any) => (
+                          <div key={t.id} className="group relative flex items-center gap-4 bg-background/50 border border-primary/5 rounded-2xl p-4 transition-all hover:border-primary/20">
+                            <div className="w-2 h-8 rounded-full" style={{ background: t.subject?.color }} />
+                            <div className="flex-1 min-w-0">
+                               <p className="text-sm font-bold text-foreground truncate leading-tight">{t.name}</p>
+                               <span className="text-[10px] font-bold text-muted-foreground opacity-50 uppercase tracking-wider">{t.subject?.name}</span>
+                            </div>
+                            <span className="absolute top-2 right-4 text-xl opacity-20 transition-opacity group-hover:opacity-100">{t.subject?.icon}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedDayInfo.revisions.length > 0 && (
+                    <div className="space-y-4">
+                      <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-accent/60">
+                         <RefreshCw className="h-3 w-3" /> Scheduled Revisions
+                      </h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        {selectedDayInfo.revisions.map((r: any) => (
+                           <div key={r.id} className="flex items-center gap-4 bg-background/50 border border-accent/10 rounded-2xl p-4 hover:border-accent/30 transition-all">
+                              <div className="flex flex-col items-center justify-center bg-accent/10 text-accent font-mono text-xs font-black w-10 h-10 rounded-xl">
+                                R{r.revisionNumber}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                 <p className="text-sm font-bold text-foreground truncate leading-tight">{r.topic?.name}</p>
+                                 <div className="flex items-center gap-2 mt-0.5">
+                                   <span className="text-[9px] font-bold text-muted-foreground opacity-60 uppercase">{r.topic?.subject?.name}</span>
+                                   <div className={`w-1.5 h-1.5 rounded-full ${r.status === 'DONE' ? 'bg-success' : 'bg-warning'}`} />
+                                   <span className="text-[9px] font-bold text-muted-foreground opacity-40 uppercase">{r.status}</span>
+                                 </div>
+                              </div>
+                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedDayInfo.topics.length === 0 && selectedDayInfo.revisions.length === 0 && (
+                    <EmptyDayMessage />
+                  )}
+                </div>
+              ) : (
+                <EmptyDayMessage />
+              )}
+            </div>
+          ) : (
+             <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-40">
+                <CalendarIcon className="h-16 w-16" />
+                <p className="font-bold text-sm uppercase tracking-widest">Select a day to view details</p>
+             </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyDayMessage() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+      <div className="w-20 h-20 bg-secondary/30 rounded-full flex items-center justify-center text-4xl">🌤️</div>
       <div>
-        <h1 className="font-heading text-2xl font-bold">Daily Planner</h1>
-        <p className="text-sm text-muted-foreground mt-1">Calendar view of your study schedule</p>
+        <p className="font-bold text-foreground">Peaceful Day</p>
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider opacity-60">Nothing scheduled for today</p>
       </div>
-
-      <div className="bg-card rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={prev} className="p-2 hover:bg-secondary rounded-lg"><ChevronLeft className="h-4 w-4" /></button>
-          <h2 className="font-heading font-semibold">{currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
-          <button onClick={next} className="p-2 hover:bg-secondary rounded-lg"><ChevronRight className="h-4 w-4" /></button>
-        </div>
-
-        <div className="grid grid-cols-7 gap-1">
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
-            <div key={d} className="text-center text-[10px] font-medium text-muted-foreground py-2">{d}</div>
-          ))}
-          {calendarDays.map((day, i) => {
-            if (!day) return <div key={`empty-${i}`} />;
-            const dateStr = getDateStr(day);
-            const isToday = dateStr === todayStr;
-            const isSelected = dateStr === selectedDay;
-            const info = getDayInfo(day);
-
-            return (
-              <div
-                key={day}
-                onClick={() => setSelectedDay(dateStr)}
-                className={`aspect-square flex flex-col items-center justify-center rounded-lg text-sm transition-colors cursor-pointer ${
-                  isSelected ? 'bg-primary/20 border border-primary/40' :
-                  isToday ? 'bg-primary/10 text-primary border border-primary/30' : 'hover:bg-secondary/50'
-                }`}
-              >
-                <span className={`font-mono text-xs ${isToday ? 'font-bold' : ''}`}>{day}</span>
-                {info.colors.length > 0 && (
-                  <div className="flex gap-0.5 mt-1">
-                    {info.colors.slice(0, 3).map((c, idx) => (
-                      <div key={idx} className="w-1.5 h-1.5 rounded-full" style={{ background: c }} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Selected day panel */}
-      {selectedDay && selectedInfo && (
-        <div className="bg-card rounded-xl p-5 space-y-4">
-          <h3 className="font-heading text-base font-semibold">
-            {new Date(selectedDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </h3>
-
-          {selectedInfo.dayTopics.length > 0 && (
-            <div>
-              <p className="text-xs text-muted-foreground mb-2">Topics Taught</p>
-              {selectedInfo.dayTopics.map((t) => {
-                const sub = subjects.find((s) => s.id === t.subjectId);
-                return (
-                  <div key={t.id} className="flex items-center gap-2 py-1">
-                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${t.lectureStatus === 'done' ? 'bg-success/20 text-success' : 'bg-secondary text-muted-foreground'}`}>L</span>
-                    <span className="text-sm text-foreground">{t.name}</span>
-                    <span className="text-xs text-muted-foreground ml-auto">{sub?.name}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {selectedInfo.dayRevisions.length > 0 && (
-            <div>
-              <p className="text-xs text-muted-foreground mb-2">Revisions Scheduled</p>
-              {selectedInfo.dayRevisions.map((r) => {
-                const topic = topics.find((t) => t.id === r.topicId);
-                const sub = topic ? subjects.find((s) => s.id === topic.subjectId) : undefined;
-                return (
-                  <div key={r.id} className="flex items-center gap-2 py-1">
-                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${r.status === 'done' ? 'bg-accent/20 text-accent' : 'bg-secondary text-muted-foreground'}`}>R{r.revisionNumber}</span>
-                    <span className="text-sm text-foreground">{topic?.name}</span>
-                    <span className="text-xs text-muted-foreground ml-auto">{sub?.name}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {selectedInfo.dayDPP && (
-            <div>
-              <p className="text-xs text-muted-foreground mb-2">DPP</p>
-              <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${selectedInfo.dayDPP.status === 'done' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'}`}>
-                  {selectedInfo.dayDPP.status}
-                </span>
-                <span className="text-sm text-foreground">Daily Practice Paper</span>
-              </div>
-            </div>
-          )}
-
-          {selectedInfo.totalItems === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">Nothing scheduled for this day</p>
-          )}
-        </div>
-      )}
     </div>
   );
 }
