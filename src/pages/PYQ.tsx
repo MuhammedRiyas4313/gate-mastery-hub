@@ -1,58 +1,161 @@
 import { usePYQs } from "@/hooks/usePYQs";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useState, useMemo } from "react";
-import { Plus, Filter, Loader2, Trash2, Award, Target, BookOpen, Save } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Filter, Loader2, Save, Trash2, Tag, CalendarDays, Award, BookOpen, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, parseISO } from "date-fns";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export default function PYQ() {
   const { data: pyqs, isLoading, addPYQ, updatePYQ, deletePYQ } = usePYQs();
   const { data: subjects } = useSubjects();
 
-  const [open, setOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [pyqToDelete, setPyqToDelete] = useState<any>(null);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [selectedPYQ, setSelectedPYQ] = useState<any>(null);
+  
   const [filterSubject, setFilterSubject] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [filterDifficulty, setFilterDifficulty] = useState('all');
 
   const [form, setForm] = useState({
-    title: '', year: '', source: '', difficulty: 'MEDIUM',
-    status: 'NOT_STARTED', subjectId: '', chapterId: '', topicId: '', notes: '',
+    title: '',
+    year: '',
+    source: 'GATE',
+    difficulty: 'MEDIUM',
+    date: new Date().toISOString().split('T')[0],
+    tagSubjectId: 'all',
+    tagChapterId: 'all',
+    tagTopicId: 'all',
+    notes: '',
+    status: 'PENDING'
   });
 
-  const handleAdd = () => {
-    if (!form.title.trim()) return;
-    addPYQ.mutate({
-      ...form,
-      subjectId: form.subjectId || undefined,
-      chapterId: form.chapterId || undefined,
-      topicId: form.topicId || undefined,
+  const handleCreateNew = () => {
+    setSelectedPYQ(null);
+    setForm({
+      title: '',
+      year: new Date().getFullYear().toString(),
+      source: 'GATE',
+      difficulty: 'MEDIUM',
+      date: new Date().toISOString().split('T')[0],
+      tagSubjectId: 'all',
+      tagChapterId: 'all',
+      tagTopicId: 'all',
+      notes: '',
+      status: 'PENDING'
     });
-    setForm({ title: '', year: '', source: '', difficulty: 'MEDIUM', status: 'NOT_STARTED', subjectId: '', chapterId: '', topicId: '', notes: '' });
-    setOpen(false);
+    setEditOpen(true);
+  };
+
+  const handleEditClick = (pyq: any) => {
+    setSelectedPYQ(pyq);
+    setForm({
+      title: pyq.title || '',
+      year: pyq.year || '',
+      source: pyq.source || 'GATE',
+      difficulty: pyq.difficulty || 'MEDIUM',
+      date: pyq.date ? new Date(pyq.date).toISOString().split('T')[0] : new Date(pyq.createdAt || Date.now()).toISOString().split('T')[0],
+      tagSubjectId: pyq.subject?._id || pyq.subject || 'all',
+      tagChapterId: pyq.chapter?._id || pyq.chapter || 'all',
+      tagTopicId: pyq.topic?._id || pyq.topic || 'all',
+      notes: pyq.notes || '',
+      status: pyq.status || 'PENDING'
+    });
+    setEditOpen(true);
+  };
+
+  const handleToggleStatus = (e: any, pyq: any) => {
+    e.stopPropagation();
+    const nextStatus = pyq.status === 'PENDING' ? 'ONGOING' : pyq.status === 'ONGOING' ? 'COMPLETED' : 'PENDING';
+    updatePYQ.mutate({ id: pyq._id, status: nextStatus }, {
+      onSuccess: () => toast.success(`PYQ marked as ${nextStatus}`)
+    });
+  };
+
+  const handleDeleteClick = (e: any, pyq: any) => {
+    e.stopPropagation();
+    setPyqToDelete(pyq);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (!pyqToDelete) return;
+    deletePYQ.mutate(pyqToDelete._id, {
+      onSuccess: () => {
+        setDeleteConfirmOpen(false);
+        setPyqToDelete(null);
+        toast.success("PYQ deleted successfully");
+      }
+    });
+  };
+
+  const selectedSubjectData = useMemo(() => subjects?.find((s: any) => s._id === form.tagSubjectId), [subjects, form.tagSubjectId]);
+  const selectedChapterData = useMemo(() => selectedSubjectData?.chapters?.find((c: any) => c._id === form.tagChapterId), [selectedSubjectData, form.tagChapterId]);
+
+  const handleSave = () => {
+    if (!form.title.trim()) {
+       toast.error('Please enter a title');
+       return;
+    }
+
+    if (selectedPYQ) {
+      updatePYQ.mutate({
+        ...selectedPYQ,
+        id: selectedPYQ._id,
+        title: form.title,
+        year: form.year,
+        source: form.source,
+        difficulty: form.difficulty,
+        subjectId: form.tagSubjectId !== 'all' ? form.tagSubjectId : null,
+        chapterId: form.tagChapterId !== 'all' ? form.tagChapterId : null,
+        topicId: form.tagTopicId !== 'all' ? form.tagTopicId : null,
+        status: form.status,
+        notes: form.notes,
+        date: form.date
+      }, {
+        onSuccess: () => {
+          setEditOpen(false);
+          toast.success("PYQ updated successfully");
+        }
+      });
+    } else {
+      addPYQ.mutate({
+        title: form.title,
+        year: form.year,
+        source: form.source,
+        difficulty: form.difficulty,
+        subjectId: form.tagSubjectId !== 'all' ? form.tagSubjectId : null,
+        chapterId: form.tagChapterId !== 'all' ? form.tagChapterId : null,
+        topicId: form.tagTopicId !== 'all' ? form.tagTopicId : null,
+        status: form.status,
+        date: form.date,
+        notes: form.notes
+      }, {
+        onSuccess: () => {
+          setEditOpen(false);
+          toast.success("PYQ created manually");
+        }
+      });
+    }
   };
 
   const filtered = useMemo(() => {
     if (!pyqs) return [];
     let list = [...pyqs];
-    if (filterSubject !== 'all') list = list.filter((p) => p.subjectId === filterSubject);
-    if (filterStatus !== 'all') list = list.filter((p) => p.status === filterStatus);
-    if (filterDifficulty !== 'all') list = list.filter((p) => p.difficulty === filterDifficulty);
+    if (filterSubject !== 'all') list = list.filter((p: any) => p.subject?._id === filterSubject || p.subject === filterSubject);
+    if (filterStatus !== 'all') list = list.filter((p: any) => p.status === filterStatus);
     return list;
-  }, [pyqs, filterSubject, filterStatus, filterDifficulty]);
-
-  const stats = useMemo(() => {
-    if (!pyqs) return { total: 0, done: 0, easy: 0, medium: 0, hard: 0 };
-    return {
-      total: pyqs.length,
-      done: pyqs.filter((p: any) => p.status === 'DONE').length,
-      easy: pyqs.filter((p: any) => p.difficulty === 'EASY').length,
-      medium: pyqs.filter((p: any) => p.difficulty === 'MEDIUM').length,
-      hard: pyqs.filter((p: any) => p.difficulty === 'HARD').length,
-    };
-  }, [pyqs]);
+  }, [pyqs, filterSubject, filterStatus]);
 
   if (isLoading) {
     return (
@@ -63,222 +166,246 @@ export default function PYQ() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-4xl font-black tracking-tight">Question Bank</h1>
-          <p className="text-sm text-muted-foreground mt-1">Independent tracking for Previous Year Questions</p>
+    <div className="max-w-6xl mx-auto space-y-6 md:space-y-10 animate-in fade-in duration-500 pb-20 px-4 md:px-0">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="font-heading text-3xl md:text-4xl font-black tracking-tight text-foreground">Previous Year Questions</h1>
+          <p className="text-xs md:text-sm text-muted-foreground font-medium">Master the archive by solving topic-wise past papers</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="lg" className="gap-2 h-12 px-8 rounded-2xl font-bold bg-primary shadow-lg shadow-primary/20">
-              <Plus className="h-5 w-5" /> Add New Question
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[85vh] overflow-y-auto rounded-[2.5rem] p-8 border-primary/10 shadow-2xl">
-            <DialogHeader><DialogTitle className="font-heading text-2xl font-black">Archive PYQ</DialogTitle></DialogHeader>
-            <div className="space-y-6 pt-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">Identifying Title *</Label>
-                <Input className="h-12 rounded-xl" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. GATE 2024 - Discrete Maths Q31" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Year</Label>
-                  <Input className="h-12 rounded-xl" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="2024" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Source</Label>
-                  <Input className="h-12 rounded-xl" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} placeholder="IIT Roorkee" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Difficulty Rating</Label>
-                  <select value={form.difficulty} onChange={(e) => setForm({ ...form, difficulty: e.target.value })} className="w-full bg-secondary/50 border-primary/5 rounded-xl h-11 px-4 text-sm font-bold appearance-none">
-                    <option value="EASY">EASY</option>
-                    <option value="MEDIUM">MEDIUM</option>
-                    <option value="HARD">HARD</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Current Progress</Label>
-                  <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full bg-secondary/50 border-primary/5 rounded-xl h-11 px-4 text-sm font-bold appearance-none">
-                    <option value="NOT_STARTED">UNATTEMPTED</option>
-                    <option value="IN_PROGRESS">IN PROGRESS</option>
-                    <option value="DONE">COMPLETED</option>
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">Linked Subject</Label>
-                <select value={form.subjectId} onChange={(e) => setForm({ ...form, subjectId: e.target.value })} className="w-full bg-secondary/50 border-primary/5 rounded-xl h-11 px-4 text-sm font-bold appearance-none">
-                  <option value="">No specific subject</option>
-                  {subjects?.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">Crucial Observations</Label>
-                <Textarea value={form.notes} className="rounded-2xl min-h-[100px] border-primary/5" onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Write about key concepts, traps, or alternative solutions..." />
-              </div>
-              <Button onClick={handleAdd} className="w-full h-12 rounded-xl font-black shadow-lg shadow-primary/20" disabled={addPYQ.isPending}>
-                {addPYQ.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Archive Question
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+           {/* Filters */}
+           <div className="flex gap-2 flex-1 sm:flex-initial">
+             <Select value={filterSubject} onValueChange={setFilterSubject}>
+               <SelectTrigger className="flex-1 sm:w-36 h-12 rounded-xl bg-card border-primary/10 text-xs font-bold">
+                 <Filter className="w-3.5 h-3.5 mr-2 opacity-50" />
+                 <SelectValue placeholder="Subject" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Subjects</SelectItem>
+                 {subjects?.map((s: any) => (
+                   <SelectItem key={s._id} value={s._id}>{s.name}</SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+             <Select value={filterStatus} onValueChange={setFilterStatus}>
+               <SelectTrigger className="flex-1 sm:w-36 h-12 rounded-xl bg-card border-primary/10 text-xs font-bold">
+                 <SelectValue placeholder="Status" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Status</SelectItem>
+                 <SelectItem value="PENDING">Pending</SelectItem>
+                 <SelectItem value="ONGOING">Ongoing</SelectItem>
+                 <SelectItem value="COMPLETED">Completed</SelectItem>
+               </SelectContent>
+             </Select>
+           </div>
+           
+           <Button onClick={handleCreateNew} className="w-full sm:w-auto rounded-xl h-12 font-black shadow-lg shadow-primary/20 px-6 bg-primary">
+             <Plus className="h-5 w-5 mr-2" /> Add PYQ
+           </Button>
+        </div>
       </div>
 
-      {/* Metrics Header */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {[
-          { label: 'Total Base', value: stats.total, color: 'text-foreground', icon: <BookOpen className="h-4 w-4" /> },
-          { label: 'Conquered', value: stats.done, color: 'text-success', icon: <Target className="h-4 w-4" /> },
-          { label: 'Level: Easy', value: stats.easy, color: 'text-success', icon: <Award className="h-4 w-4" /> },
-          { label: 'Level: Mid', value: stats.medium, color: 'text-warning', icon: <Award className="h-4 w-4" /> },
-          { label: 'Level: Hard', value: stats.hard, color: 'text-destructive', icon: <Award className="h-4 w-4" /> },
-        ].map((s) => (
-          <div key={s.label} className="bg-card/50 backdrop-blur-sm border border-primary/5 rounded-[2rem] px-6 py-6 text-center space-y-1 group hover:border-primary/20 transition-all">
-            <div className="flex justify-center opacity-30 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300 transform mb-1">{s.icon}</div>
-            <p className={`font-mono text-2xl font-black ${s.color}`}>{s.value}</p>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-tight">{s.label}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        {filtered.map((pyq: any) => (
+          <div key={pyq._id} className="bg-card/40 backdrop-blur-md rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 border border-primary/5 hover:border-primary/20 transition-all duration-500 shadow-sm relative overflow-hidden group">
+            <div className="space-y-6 relative z-10">
+               <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                     <button 
+                       onClick={(e) => handleToggleStatus(e, pyq)}
+                       className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-transform hover:scale-105 active:scale-95 border ${
+                         pyq.status === 'COMPLETED' ? 'bg-success/10 text-success border-success/20' : 
+                         pyq.status === 'ONGOING' ? 'bg-warning/10 text-warning animate-pulse border-warning/20' : 
+                         'bg-primary/5 text-primary/60 border-primary/10'
+                     }`}>
+                        {pyq.status}
+                     </button>
+                     <button onClick={(e) => handleDeleteClick(e, pyq)} className="p-1 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                       <Trash2 className="h-4 w-4" />
+                     </button>
+                  </div>
+                  <div className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${
+                     pyq.difficulty === 'HARD' ? 'bg-destructive/10 text-destructive' :
+                     pyq.difficulty === 'MEDIUM' ? 'bg-warning/10 text-warning' :
+                     'bg-success/10 text-success'
+                  }`}>
+                     {pyq.difficulty}
+                  </div>
+               </div>
+
+               <div>
+                  <h4 className="font-heading text-base md:text-lg font-bold text-foreground leading-tight">{pyq.title}</h4>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-3 text-[10px] md:text-xs font-semibold text-muted-foreground opacity-80">
+                    <span className="flex items-center gap-1"><Award className="w-3 h-3" /> {pyq.source} {pyq.year || ''}</span>
+                    <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" /> {pyq.date ? new Date(pyq.date).toLocaleDateString() : 'Auto-generated'}</span>
+                  </div>
+               </div>
+
+               {(pyq.subject || pyq.chapter) && (
+                 <div className="bg-primary/5 p-3 rounded-2xl border border-primary/10 flex flex-col gap-1">
+                    {pyq.subject && (
+                       <p className="text-[10px] font-black uppercase text-primary/70 flex items-center gap-1.5"><BookOpen className="w-3 h-3" /> {pyq.subject.name || 'Subject'}</p>
+                    )}
+                    {pyq.chapter && (
+                       <p className="text-xs font-semibold text-foreground pl-4 border-l-2 border-primary/20 ml-1.5">{pyq.chapter.name || 'Chapter'}</p>
+                    )}
+                 </div>
+               )}
+
+               <Button variant="outline" className="w-full h-11 rounded-xl font-bold border-primary/10 hover:border-primary/30 mt-4" onClick={() => handleEditClick(pyq)}>
+                  Configure PYQ
+               </Button>
+            </div>
           </div>
         ))}
-      </div>
 
-      {/* Control Bar */}
-      <div className="flex items-center justify-between gap-4 flex-wrap bg-card/30 p-4 rounded-3xl border border-primary/5">
-        <div className="flex items-center gap-3">
-          <Filter className="h-4 w-4 text-primary" />
-          <select
-            value={filterSubject}
-            onChange={(e) => setFilterSubject(e.target.value)}
-            className="bg-background/80 text-xs font-bold border border-primary/5 rounded-xl px-4 h-10 focus:outline-none focus:ring-1 focus:ring-primary appearance-none min-w-[150px]"
-          >
-            <option value="all">ALL DOMAINS</option>
-            {subjects?.map((s: any) => <option key={s.id} value={s.id}>{s.name.toUpperCase()}</option>)}
-          </select>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-background/80 text-xs font-bold border border-primary/5 rounded-xl px-4 h-10 focus:outline-none focus:ring-1 focus:ring-primary appearance-none"
-          >
-            <option value="all">ALL COGNITION</option>
-            <option value="NOT_STARTED">UNATTEMPTED</option>
-            <option value="IN_PROGRESS">ACTIVE</option>
-            <option value="DONE">MASTERED</option>
-          </select>
-          <select
-            value={filterDifficulty}
-            onChange={(e) => setFilterDifficulty(e.target.value)}
-            className="bg-background/80 text-xs font-bold border border-primary/5 rounded-xl px-4 h-10 focus:outline-none focus:ring-1 focus:ring-primary appearance-none appearance-none"
-          >
-            <option value="all">ALL INTENSITY</option>
-            <option value="EASY">EASY</option>
-            <option value="MEDIUM">MEDIUM</option>
-            <option value="HARD">HARD</option>
-          </select>
-        </div>
-        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-4">Found {filtered.length} matching entries</p>
-      </div>
-
-      {/* Records list */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
-        {filtered.length === 0 ? (
-          <div className="col-span-full text-center py-24 bg-card/20 rounded-[3rem] border border-dashed border-primary/10">
-            <Award className="h-20 w-20 text-muted-foreground/10 mx-auto mb-6" />
-            <h3 className="font-heading text-xl font-black">No records found</h3>
-            <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">Expand your search criteria or archive a new question to fill your bank.</p>
+        {filtered.length === 0 && (
+          <div className="col-span-full py-20 text-center bg-card/20 rounded-[2.5rem] border border-dashed border-primary/10 flex flex-col items-center justify-center">
+             <Layers className="h-12 w-12 text-muted-foreground/30 mb-4" />
+             <h3 className="font-heading text-xl font-bold text-foreground mb-2">No PYQs Found</h3>
+             <p className="text-sm text-muted-foreground max-w-sm">Adjust your filters or complete a chapter to auto-generate past year questions.</p>
           </div>
-        ) : (
-          filtered.map((pyq: any) => (
-            <div key={pyq.id} className="group relative bg-card/50 backdrop-blur-md rounded-[2.5rem] p-8 border border-primary/5 hover:border-primary/20 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-primary/5 overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
-                <Target className="h-32 w-32" />
-              </div>
-              <div className="flex flex-col h-full space-y-6 relative z-10">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1.5 flex-1 pr-4">
-                    <h4 className="font-heading text-lg font-bold text-foreground leading-tight group-hover:text-primary transition-colors line-clamp-2">{pyq.title}</h4>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono font-black text-muted-foreground/60 tracking-wider">REF: {pyq.year || 'UNKNOWN'}</span>
-                      <span className="w-1 h-1 rounded-full bg-secondary" />
-                      <span className="text-[10px] font-bold text-primary italic">{pyq.source || 'Standard Repository'}</span>
-                    </div>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-10 w-10 rounded-2xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    onClick={() => deletePYQ.mutate(pyq.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${pyq.difficulty === 'EASY' ? 'bg-success/10 text-success' :
-                      pyq.difficulty === 'MEDIUM' ? 'bg-warning/10 text-warning' :
-                        'bg-destructive/10 text-destructive'
-                    }`}>
-                    {pyq.difficulty}
-                  </div>
-                  {pyq.subject && (
-                    <div className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary border border-primary/5 flex items-center gap-2">
-                      <span>{pyq.subject.icon}</span> {pyq.subject.name}
-                    </div>
-                  )}
-                </div>
-
-                {pyq.notes && (
-                  <div className="bg-secondary/30 p-5 rounded-2xl border border-primary/5">
-                    <p className="text-xs text-muted-foreground/90 font-medium leading-relaxed italic">
-                      "{pyq.notes}"
-                    </p>
-                  </div>
-                )}
-
-                <div className="pt-4 mt-auto">
-                  <button
-                    onClick={() => {
-                      const nextMap: any = { NOT_STARTED: 'IN_PROGRESS', IN_PROGRESS: 'DONE', DONE: 'NOT_STARTED' };
-                      updatePYQ.mutate({ id: pyq.id, status: nextMap[pyq.status], completedAt: nextMap[pyq.status] === 'DONE' ? new Date().toISOString() : null });
-                    }}
-                    className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 border flex items-center justify-center gap-3 ${pyq.status === 'DONE' ? 'bg-success/10 text-success border-success/20' :
-                        pyq.status === 'IN_PROGRESS' ? 'bg-primary/10 text-primary border-primary/20 animate-pulse' :
-                          'bg-background border-primary/10 text-muted-foreground'
-                      }`}
-                  >
-                    {pyq.status === 'DONE' ? <CheckCircle2 className="h-4 w-4" /> : null}
-                    {pyq.status.replace('_', ' ')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))
         )}
       </div>
-    </div>
-  );
-}
 
-function CheckCircle2(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 max-w-[95vw] sm:max-w-lg">
+           <DialogHeader>
+             <DialogTitle className="font-heading text-2xl font-black">{selectedPYQ ? `Configure PYQ` : `Add PYQ`}</DialogTitle>
+           </DialogHeader>
+           
+           <div className="space-y-6 pt-4">
+
+              <div className="space-y-2">
+                 <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Question Details</Label>
+                 <Input className="h-12 rounded-xl" placeholder="Title/Description (e.g., Gate 2021 Question 45)" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                 <div className="grid grid-cols-2 gap-4 mt-2">
+                    <Input className="h-12 rounded-xl" placeholder="Year" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} />
+                    <Input className="h-12 rounded-xl" placeholder="Source (e.g., GATE)" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} />
+                 </div>
+              </div>
+
+              {!selectedPYQ && (
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Scheduled / Assigned Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={`w-full h-12 justify-start text-left font-bold rounded-xl ${!form.date && "text-muted-foreground"}`}>
+                          <CalendarDays className="mr-2 h-4 w-4" />
+                          {form.date ? format(parseISO(form.date), "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 rounded-2xl" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={form.date ? parseISO(form.date) : undefined}
+                          onSelect={(date) => date && setForm({ ...form, date: format(date, "yyyy-MM-dd") })}
+                          initialFocus
+                          className="p-3"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                 </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                     <Label className="text-[10px] font-black uppercase text-muted-foreground">Difficulty</Label>
+                     <Select value={form.difficulty} onValueChange={(val) => setForm({ ...form, difficulty: val })}>
+                        <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Difficulty" /></SelectTrigger>
+                        <SelectContent>
+                           <SelectItem value="EASY">Easy</SelectItem>
+                           <SelectItem value="MEDIUM">Medium</SelectItem>
+                           <SelectItem value="HARD">Hard</SelectItem>
+                        </SelectContent>
+                     </Select>
+                  </div>
+                  <div className="space-y-2">
+                     <Label className="text-[10px] font-black uppercase text-muted-foreground">Status</Label>
+                     <Select value={form.status} onValueChange={(val) => setForm({ ...form, status: val })}>
+                        <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Status" /></SelectTrigger>
+                        <SelectContent>
+                           <SelectItem value="PENDING">Pending</SelectItem>
+                           <SelectItem value="ONGOING">Ongoing</SelectItem>
+                           <SelectItem value="COMPLETED">Completed</SelectItem>
+                        </SelectContent>
+                     </Select>
+                  </div>
+              </div>
+
+
+              <div className="space-y-3 p-4 bg-primary/5 rounded-[1.5rem] border border-primary/10">
+                 <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Tag to Content</Label>
+                 <Select value={form.tagSubjectId} onValueChange={(val) => setForm({ ...form, tagSubjectId: val, tagChapterId: 'all', tagTopicId: 'all' })}>
+                   <SelectTrigger className="h-11 rounded-full px-4 border-primary/20 bg-background/50 backdrop-blur-sm">
+                     <SelectValue placeholder="Select Subject" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="all" className="text-muted-foreground italic">None</SelectItem>
+                     {subjects?.map((s: any) => <SelectItem key={s._id} value={s._id}>{s.name}</SelectItem>)}
+                   </SelectContent>
+                 </Select>
+
+                 {form.tagSubjectId !== 'all' && (
+                    <Select value={form.tagChapterId} onValueChange={(val) => setForm({ ...form, tagChapterId: val, tagTopicId: 'all' })}>
+                      <SelectTrigger className="h-11 rounded-full px-4 border-primary/20 bg-background/50 backdrop-blur-sm">
+                        <SelectValue placeholder="Select Chapter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="text-muted-foreground italic">All Chapters</SelectItem>
+                        {selectedSubjectData?.chapters?.map((c: any) => <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                 )}
+
+                 {form.tagChapterId !== 'all' && form.tagSubjectId !== 'all' && (
+                    <Select value={form.tagTopicId} onValueChange={(val) => setForm({ ...form, tagTopicId: val })}>
+                      <SelectTrigger className="h-11 rounded-full px-4 border-primary/20 bg-background/50 backdrop-blur-sm">
+                        <SelectValue placeholder="Select Topic" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="text-muted-foreground italic">All Topics</SelectItem>
+                        {selectedChapterData?.topics?.map((t: any) => <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                 )}
+              </div>
+
+              <div className="space-y-2">
+                 <Label className="text-[10px] font-black uppercase text-muted-foreground">Notes / Formulae Used</Label>
+                 <Textarea className="rounded-2xl min-h-[100px]" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              </div>
+
+              <Button onClick={handleSave} className="w-full h-12 rounded-xl font-black shadow-lg shadow-primary/20" disabled={updatePYQ.isPending || addPYQ.isPending}>
+                 {(updatePYQ.isPending || addPYQ.isPending) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                 Save Configuration
+              </Button>
+           </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent className="rounded-[2rem] border-primary/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-heading text-2xl font-black">Delete PYQ?</AlertDialogTitle>
+            <AlertDialogDescription className="text-base text-muted-foreground">
+              This will permanently delete the practice question 
+              <strong className="text-foreground ml-1">
+                {pyqToDelete?.title}
+              </strong>. 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6">
+            <AlertDialogCancel className="h-12 rounded-xl font-bold border-primary/10 hover:bg-secondary">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="h-12 rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-lg shadow-destructive/20">
+              {deletePYQ.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Yes, delete it"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+    </div>
   );
 }

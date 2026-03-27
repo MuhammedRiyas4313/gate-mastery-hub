@@ -21,22 +21,25 @@ export function TopBar() {
   }, [data]);
 
   return (
-    <header className="h-16 flex items-center justify-between px-8 bg-background/50 backdrop-blur-xl border-b border-primary/5 sticky top-0 z-40">
-      <div className="flex items-center gap-6">
+    <header className="h-16 flex items-center justify-between px-4 md:px-8 bg-background/50 backdrop-blur-xl border-b border-primary/5 sticky top-0 z-40">
+      <div className="flex items-center gap-2 md:gap-6">
         <SidebarTrigger className="text-muted-foreground hover:text-primary transition-colors h-10 w-10 rounded-xl hover:bg-primary/5" />
-        <div className="hidden md:flex items-center gap-2 text-[10px] font-black tracking-widest uppercase text-muted-foreground/60">
+        <div className="hidden lg:flex items-center gap-2 text-[10px] font-black tracking-widest uppercase text-muted-foreground/60">
           <Calendar className="h-3.5 w-3.5 text-primary" />
           <span>{todayFormatted}</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
         {isLoading ? (
-            <div className="h-9 w-32 bg-secondary/30 animate-pulse rounded-full" />
+            <div className="h-9 w-24 md:w-40 bg-secondary/30 animate-pulse rounded-full" />
         ) : (
-            <div className="flex items-center gap-3 bg-primary/10 border border-primary/10 px-5 py-2 rounded-full shadow-sm hover:shadow-primary/5 transition-all group">
-              <span className="text-sm group-hover:scale-125 transition-transform duration-500">🎯</span>
-              <span className="text-[10px] font-black text-primary uppercase tracking-[0.15em]">{data?.gateCountdownDays || 0} days to GATE</span>
+            <div className="flex items-center gap-2 md:gap-3 bg-primary/10 border border-primary/10 px-3 md:px-5 py-2 rounded-full shadow-sm hover:shadow-primary/5 transition-all group cursor-help">
+              <span className="text-xs md:text-sm group-hover:scale-125 transition-transform duration-500">🎯</span>
+              <span className="text-[10px] font-black text-primary uppercase tracking-[0.1em] md:tracking-[0.15em]">
+                <span className="hidden sm:inline">{data?.upcomingExams?.[0]?.title || "GATE"}: </span>
+                {data?.gateCountdownDays || 0}d
+              </span>
             </div>
         )}
 
@@ -57,7 +60,7 @@ export function TopBar() {
                 className="h-10 w-10 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                 title="Logout"
             >
-                <LogOut className="h-4.5 w-4.5" />
+                <LogOut className="h-5 w-5" />
             </Button>
         </div>
       </div>

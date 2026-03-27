@@ -10,8 +10,11 @@ import Planner from "./pages/Planner";
 import Revision from "./pages/Revision";
 import PYQ from "./pages/PYQ";
 import Quizzes from "./pages/Quizzes";
-import DPPPage from "./pages/DPP";
+import DPPs from "./pages/DPPs";
+import TestSeries from "./pages/TestSeries";
 import Analytics from "./pages/Analytics";
+import Exams from "./pages/Exams";
+
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
@@ -42,8 +45,10 @@ const App = () => {
                 <Route path="/revision" element={<Revision />} />
                 <Route path="/pyq" element={<PYQ />} />
                 <Route path="/quizzes" element={<Quizzes />} />
-                <Route path="/dpp" element={<DPPPage />} />
+                <Route path="/dpp" element={<DPPs />} />
+                <Route path="/test-series" element={<TestSeries />} />
                 <Route path="/analytics" element={<Analytics />} />
+                <Route path="/exams" element={<Exams />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Layout>

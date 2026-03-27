@@ -1,7 +1,7 @@
-import { useRevisions } from "@/hooks/useRevisions";
+import { useDPPs } from "@/hooks/useDPPs";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useState, useMemo } from "react";
-import { RefreshCw, Loader2, Save, Plus, Trash2, Tag, CalendarDays } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, Save, Plus, Trash2, Tag, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -13,15 +13,15 @@ import { format, parseISO } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
-export default function Revision() {
-  const { data: revisions, isLoading, updateRevision, deleteRevision } = useRevisions();
+export default function DPPs() {
+  const { data: dpps, isLoading, updateDPP, deleteDPP } = useDPPs();
   const { data: subjects } = useSubjects();
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [revisionToDelete, setRevisionToDelete] = useState<any>(null);
+  const [dppToDelete, setDppToDelete] = useState<any>(null);
 
   const [editOpen, setEditOpen] = useState(false);
-  const [selectedRevision, setSelectedRevision] = useState<any>(null);
+  const [selectedDPP, setSelectedDPP] = useState<any>(null);
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     status: 'PENDING',
@@ -33,7 +33,7 @@ export default function Revision() {
   });
 
   const handleCreateNew = () => {
-    setSelectedRevision(null);
+    setSelectedDPP(null);
     setForm({
       date: new Date().toISOString().split('T')[0],
       status: 'PENDING',
@@ -46,57 +46,58 @@ export default function Revision() {
     setEditOpen(true);
   };
 
-  const handleToggleStatus = (e: any, rev: any) => {
+  const handleToggleStatus = (e: any, dpp: any) => {
     e.stopPropagation();
-    const nextStatus = rev.status === 'PENDING' ? 'ONGOING' : rev.status === 'ONGOING' ? 'COMPLETED' : 'PENDING';
-    updateRevision.mutate({ id: rev._id, status: nextStatus, notes: rev.notes, tags: rev.tags }, {
-      onSuccess: () => toast.success(`Revision marked as ${nextStatus}`)
+    const nextStatus = dpp.status === 'PENDING' ? 'ONGOING' : dpp.status === 'ONGOING' ? 'COMPLETED' : 'PENDING';
+    updateDPP.mutate({ id: dpp._id, status: nextStatus, notes: dpp.notes, tags: dpp.tags }, {
+      onSuccess: () => toast.success(`DPP marked as ${nextStatus}`)
     });
   };
 
-  const handleEditClick = (rev: any) => {
-    setSelectedRevision(rev);
+
+  const handleEditClick = (dpp: any) => {
+    setSelectedDPP(dpp);
     setForm({
-      date: new Date(rev.date).toISOString().split('T')[0],
-      status: rev.status || 'PENDING',
-      notes: rev.notes || '',
+      date: new Date(dpp.date).toISOString().split('T')[0],
+      status: dpp.status || 'PENDING',
+      notes: dpp.notes || '',
       tagSubjectId: 'all',
       tagChapterId: 'all',
       tagTopicId: 'all',
-      tags: rev.tags || []
+      tags: dpp.tags || []
     });
     setEditOpen(true);
   };
 
-  const handleDeleteClick = (e: any, rev: any) => {
+  const handleDeleteClick = (e: any, dpp: any) => {
     e.stopPropagation();
-    setRevisionToDelete(rev);
+    setDppToDelete(dpp);
     setDeleteConfirmOpen(true);
   };
 
   const confirmDelete = () => {
-    if (!revisionToDelete) return;
-    deleteRevision.mutate(revisionToDelete._id, {
+    if (!dppToDelete) return;
+    deleteDPP.mutate(dppToDelete._id, {
       onSuccess: () => {
         setDeleteConfirmOpen(false);
-        setRevisionToDelete(null);
-        toast.success("Revision deleted successfully");
+        setDppToDelete(null);
+        toast.success("DPP deleted successfully");
       }
     });
   };
 
   const handleSave = () => {
-    updateRevision.mutate({
-      id: selectedRevision?._id,
-      createNew: !selectedRevision,
-      date: selectedRevision ? undefined : form.date,
+    updateDPP.mutate({
+      id: selectedDPP?._id,
+      createNew: !selectedDPP,
+      date: selectedDPP ? undefined : form.date,
       status: form.status,
       notes: form.notes,
       tags: form.tags
     }, {
       onSuccess: () => {
         setEditOpen(false);
-        toast.success(selectedRevision ? "Revision updated" : "Revision created");
+        toast.success(selectedDPP ? "DPP updated" : "DPP created");
       }
     });
   };
@@ -138,49 +139,46 @@ export default function Revision() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-card/40 backdrop-blur-md p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-primary/5 shadow-sm">
         <div className="space-y-1.5 text-center md:text-left">
            <div className="flex items-center justify-center md:justify-start gap-3">
-              <span className="px-3 py-0.5 bg-primary/10 text-primary text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-full">Retention Protocol</span>
+              <span className="px-3 py-0.5 bg-primary/10 text-primary text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-full">Protocol Vault</span>
               <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
            </div>
-           <h1 className="font-heading text-3xl md:text-4xl font-black tracking-tight text-foreground leading-tight">Daily Revisions</h1>
-           <p className="text-xs md:text-sm text-muted-foreground font-medium max-w-sm mx-auto md:mx-0 leading-relaxed">Auto-generated nodes to test your long-term memory.</p>
+           <h1 className="font-heading text-3xl md:text-4xl font-black tracking-tight text-foreground leading-tight">Daily Practice Papers</h1>
+           <p className="text-xs md:text-sm text-muted-foreground font-medium max-w-sm mx-auto md:mx-0 leading-relaxed">Coordinate your daily consistency and problem-solving metrics.</p>
         </div>
-        <Button onClick={handleCreateNew} className="w-full md:w-auto rounded-2xl h-14 md:h-12 font-black shadow-xl shadow-primary/20 px-8 bg-primary hover:scale-105 transition-all text-sm flex items-center justify-center shrink-0">
-          <Plus className="h-5 w-5 mr-3" /> Add Revision
+        <Button onClick={handleCreateNew} className="w-full md:w-auto rounded-2xl h-14 md:h-12 font-black shadow-xl shadow-primary/20 px-8 bg-primary hover:scale-105 transition-all text-xs md:text-sm flex items-center justify-center shrink-0">
+          <Plus className="h-4 w-4 md:h-5 md:w-5 mr-3" /> Add DPP
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {revisions?.map((rev: any) => (
-          <div key={rev._id} className="group relative bg-card/40 backdrop-blur-md rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 border border-primary/5 hover:border-primary/20 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-primary/5">
-            <div className="flex flex-col h-full space-y-5 md:space-y-6 text-center sm:text-left">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {dpps?.map((dpp: any) => (
+          <div key={dpp._id} className="group relative bg-card/50 backdrop-blur-md rounded-[2.5rem] p-8 border border-primary/5 hover:border-primary/20 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-primary/5">
+            <div className="flex flex-col h-full space-y-6">
               <div className="flex items-start justify-between">
-                <div className="w-12 h-12 md:w-14 md:h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-inner shrink-0">
-                  <RefreshCw className="h-6 w-6 md:h-7 md:w-7" />
+                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-inner">
+                  <CalendarIcon className="h-7 w-7" />
                 </div>
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                  <button 
-                    onClick={(e) => handleToggleStatus(e, rev)}
-                    className={`shrink-0 px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 border ${
-                    rev.status === 'COMPLETED' ? 'bg-success/10 text-success border-success/20' :
-                    rev.status === 'ONGOING'   ? 'bg-warning/10 text-warning animate-pulse border-warning/20' :
-                    'bg-background border-primary/10 text-muted-foreground hover:border-primary/30 hover:text-foreground'
-                  }`}>
-                    {rev.status}
-                  </button>
-                  <button onClick={(e) => handleDeleteClick(e, rev)} className="shrink-0 p-2 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
+                <button 
+                  onClick={(e) => handleToggleStatus(e, dpp)}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 border ${
+                  dpp.status === 'COMPLETED' ? 'bg-success/10 text-success border-success/20' :
+                  dpp.status === 'ONGOING'   ? 'bg-warning/10 text-warning animate-pulse border-warning/20' :
+                  'bg-background border-primary/10 text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                }`}>
+                  {dpp.status}
+                </button>
+                <button onClick={(e) => handleDeleteClick(e, dpp)} className="p-2 ml-2 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
 
-              <div className="space-y-1">
-                <h4 className="font-heading text-base md:text-lg font-bold text-foreground leading-tight">
-                  {new Date(rev.date).toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
+              <div>
+                <h4 className="font-heading text-lg font-bold text-foreground leading-tight">
+                  {new Date(dpp.date).toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                 </h4>
-                <p className="text-[10px] font-bold text-muted-foreground/40">{new Date(rev.date).getFullYear()}</p>
                 <div className="flex flex-col gap-2 mt-4">
-                  {rev.tags?.length > 0 ? (
-                    rev.tags.map((tag: any, i: number) => (
+                  {dpp.tags?.length > 0 ? (
+                    dpp.tags.map((tag: any, i: number) => (
                       <div key={i} className="flex flex-col gap-1 p-2 rounded-xl bg-primary/5 border border-primary/5 text-primary text-[10px] font-bold">
                         <div className="flex items-center gap-1.5 opacity-80 uppercase tracking-wider">
                           <Tag className="h-3 w-3" /> {tag.subject?.name}
@@ -195,16 +193,16 @@ export default function Revision() {
                 </div>
               </div>
 
-              {rev.notes && (
-                <p className="text-xs text-muted-foreground italic border-l-2 border-primary/20 pl-3">{rev.notes}</p>
+              {dpp.notes && (
+                <p className="text-xs text-muted-foreground italic border-l-2 border-primary/20 pl-3">{dpp.notes}</p>
               )}
 
               <Button
                 variant="outline"
                 className="w-full h-12 rounded-xl font-bold border-primary/10 hover:border-primary/40 mt-auto"
-                onClick={() => handleEditClick(rev)}
+                onClick={() => handleEditClick(dpp)}
               >
-                Configure Revision
+                Configure DPP
               </Button>
             </div>
           </div>
@@ -212,17 +210,17 @@ export default function Revision() {
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 border-primary/10 shadow-2xl max-w-[95vw] sm:max-w-lg">
+        <DialogContent className="max-h-[85vh] overflow-y-auto rounded-[2.5rem] p-8 border-primary/10 shadow-2xl max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-heading text-2xl font-black">
-              {selectedRevision ? `Update Revision — ${new Date(selectedRevision.date).toLocaleDateString()}` : 'Create Revision'}
+              {selectedDPP ? `Update DPP — ${new Date(selectedDPP.date).toLocaleDateString()}` : 'Create DPP'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-6 pt-4">
 
-            {!selectedRevision && (
+            {!selectedDPP && (
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Revision Date</Label>
+                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">DPP Date</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className={`w-full h-12 justify-start text-left font-bold rounded-xl ${!form.date && "text-muted-foreground"}`}>
@@ -260,7 +258,7 @@ export default function Revision() {
 
             {/* Tags section */}
             <div className="space-y-3 p-4 bg-primary/5 rounded-[1.5rem] border border-primary/10">
-               <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Link Content to Revision</Label>
+               <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Link Content to DPP</Label>
                
                <div className="space-y-3">
                   <Select value={form.tagSubjectId} onValueChange={(val) => setForm({ ...form, tagSubjectId: val, tagChapterId: 'all', tagTopicId: 'all' })}>
@@ -332,8 +330,8 @@ export default function Revision() {
               <Input className="h-12 rounded-xl" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Focus areas, common mistakes..." />
             </div>
 
-            <Button onClick={handleSave} className="w-full h-12 rounded-2xl font-black shadow-lg shadow-primary/20" disabled={updateRevision.isPending}>
-              {updateRevision.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+            <Button onClick={handleSave} className="w-full h-12 rounded-2xl font-black shadow-lg shadow-primary/20" disabled={updateDPP.isPending}>
+              {updateDPP.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
               Save Configuration
             </Button>
           </div>
@@ -343,11 +341,11 @@ export default function Revision() {
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent className="rounded-[2rem] border-primary/10">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-heading text-2xl font-black">Delete Revision?</AlertDialogTitle>
+            <AlertDialogTitle className="font-heading text-2xl font-black">Delete DPP?</AlertDialogTitle>
             <AlertDialogDescription className="text-base text-muted-foreground">
-              This will permanently delete the revision scheduled for 
+              This will permanently delete the practice paper scheduled for 
               <strong className="text-foreground ml-1">
-                {revisionToDelete?.date && format(new Date(revisionToDelete.date), "PPP")}
+                {dppToDelete?.date && format(new Date(dppToDelete.date), "PPP")}
               </strong>. 
               This action cannot be undone.
             </AlertDialogDescription>
@@ -355,7 +353,7 @@ export default function Revision() {
           <AlertDialogFooter className="mt-6">
             <AlertDialogCancel className="h-12 rounded-xl font-bold border-primary/10 hover:bg-secondary">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="h-12 rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-lg shadow-destructive/20">
-              {deleteRevision.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Yes, delete it"}
+              {deleteDPP.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Yes, delete it"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -363,3 +361,4 @@ export default function Revision() {
     </div>
   );
 }
+

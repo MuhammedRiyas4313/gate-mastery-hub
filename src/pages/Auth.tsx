@@ -1,39 +1,12 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { graphqlClient } from '@/lib/graphql-client';
-import { gql } from 'graphql-request';
+import api from '@/lib/rest-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-
-const LOGIN_MUTATION = gql`
-  mutation Login($email: String!, $password: String!) {
-    login(email: $email, password: $password) {
-      accessToken
-      user {
-        id
-        email
-        name
-      }
-    }
-  }
-`;
-
-const REGISTER_MUTATION = gql`
-  mutation Register($email: String!, $password: String!, $name: String!) {
-    register(email: $email, password: $password, name: $name) {
-      accessToken
-      user {
-        id
-        email
-        name
-      }
-    }
-  }
-`;
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -45,31 +18,31 @@ export default function Auth() {
 
   const loginMutation = useMutation({
     mutationFn: async () => {
-      const data: any = await graphqlClient.request(LOGIN_MUTATION, { email, password });
-      return data.login;
+      const { data } = await api.post('/users/login', { email, password });
+      return data;
     },
     onSuccess: (data) => {
-      authLogin(data.accessToken, data.user);
+      authLogin(data.token, data);
       toast.success('Logged in successfully!');
       navigate('/');
     },
     onError: (error: any) => {
-      toast.error(error?.response?.errors?.[0]?.message || 'Login failed');
+      toast.error(error?.response?.data?.message || 'Login failed');
     },
   });
 
   const signupMutation = useMutation({
     mutationFn: async () => {
-      const data: any = await graphqlClient.request(REGISTER_MUTATION, { email, password, name });
-      return data.register;
+      const { data } = await api.post('/users/register', { email, password, name });
+      return data;
     },
     onSuccess: (data) => {
-      authLogin(data.accessToken, data.user);
+      authLogin(data.token, data);
       toast.success('Signed up successfully!');
       navigate('/');
     },
     onError: (error: any) => {
-      toast.error(error?.response?.errors?.[0]?.message || 'Signup failed');
+      toast.error(error?.response?.data?.message || 'Signup failed');
     },
   });
 
@@ -152,3 +125,4 @@ export default function Auth() {
     </div>
   );
 }
+

@@ -1,56 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { graphqlClient } from '@/lib/graphql-client';
-import { gql } from 'graphql-request';
-
-const PYQS_QUERY = gql`
-  query GetPYQs {
-    pyqs {
-      id
-      title
-      year
-      source
-      difficulty
-      status
-      subjectId
-      chapterId
-      topicId
-      notes
-      addedDate
-      completedAt
-      subject {
-        id
-        name
-        icon
-        color
-      }
-    }
-  }
-`;
-
-const CREATE_PYQ = gql`
-  mutation CreatePYQ($title: String!, $year: String, $source: String, $difficulty: String!, $status: String!, $subjectId: ID, $chapterId: ID, $topicId: ID, $notes: String) {
-    createPYQ(
-      title: $title, year: $year, source: $source, difficulty: $difficulty, status: $status, subjectId: $subjectId, chapterId: $chapterId, topicId: $topicId, notes: $notes
-    ) {
-      id
-    }
-  }
-`;
-
-const UPDATE_PYQ = gql`
-  mutation UpdatePYQ($id: ID!, $status: String, $notes: String, $completedAt: DateTime) {
-    updatePYQ(id: $id, status: $status, notes: $notes, completedAt: $completedAt) {
-      id
-      status
-    }
-  }
-`;
-
-const DELETE_PYQ = gql`
-  mutation DeletePYQ($id: ID!) {
-    removePYQ(id: $id)
-  }
-`;
+import api from '@/lib/rest-client';
 
 export function usePYQs() {
   const queryClient = useQueryClient();
@@ -58,32 +7,29 @@ export function usePYQs() {
   const query = useQuery({
     queryKey: ['pyqs'],
     queryFn: async () => {
-      const data: any = await graphqlClient.request(PYQS_QUERY);
-      return data.pyqs;
+      const { data } = await api.get('/pyqs');
+      return data;
     },
   });
 
   const addPYQ = useMutation({
-    mutationFn: async (vars: any) => graphqlClient.request(CREATE_PYQ, vars),
+    mutationFn: async (vars: any) => api.post('/pyqs', vars),
     onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['pyqs'] });
-        queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['pyqs'] });
     },
   });
 
   const updatePYQ = useMutation({
-    mutationFn: async (vars: any) => graphqlClient.request(UPDATE_PYQ, vars),
+    mutationFn: async ({ id, ...vars }: any) => api.put(`/pyqs/${id}`, vars),
     onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['pyqs'] });
-        queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['pyqs'] });
     },
   });
 
   const deletePYQ = useMutation({
-    mutationFn: async (id: string) => graphqlClient.request(DELETE_PYQ, { id }),
+    mutationFn: async (id: string) => api.delete(`/pyqs/${id}`),
     onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['pyqs'] });
-        queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['pyqs'] });
     },
   });
 

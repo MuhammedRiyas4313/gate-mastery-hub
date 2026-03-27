@@ -1,294 +1,333 @@
 import { useDashboard } from "@/hooks/useDashboard";
-import { useMemo } from "react";
-import { ProgressRing } from "@/components/ProgressRing";
-import { CheckCircle2, Circle, Clock, Flame, BookOpen, RefreshCw, Loader2 } from "lucide-react";
+import {
+   CheckCircle2,
+   Circle,
+   Clock,
+   Flame,
+   BookOpen,
+   RefreshCw,
+   Loader2,
+   Award,
+   Target,
+   CalendarDays,
+   ChevronRight,
+   TrendingUp,
+   BrainCircuit,
+   Zap,
+   Tag,
+   Trophy
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { format } from "date-fns";
+import { useMemo } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 export default function Dashboard() {
-  const { 
-    data: dashboard, 
-    isLoading, 
-    error,
-    toggleLecture,
-    updateDPP,
-    updateRevision
-  } = useDashboard();
+   const {
+      data: dashboard,
+      isLoading,
+      error,
+      toggleLecture,
+      updateDPP,
+      updateRevision
+   } = useDashboard();
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-10 w-10 text-primary animate-spin" />
-      </div>
-    );
-  }
+   const {
+      topicsCompletedToday = [],
+      revisionsToday = [],
+      dppToday,
+      pyqsToday = [],
+      testsToday = [],
+      weekendQuiz,
+      recentQuizzes = [],
+      gateCountdownDays,
+      upcomingExams = [],
+      subjectProgress = []
+   } = dashboard || {};
 
-  if (error || !dashboard) {
-    return (
-      <div className="p-10 text-center">
-        <h2 className="text-xl font-bold text-destructive">Error loading dashboard</h2>
-        <p className="text-muted-foreground mt-2">Make sure your backend is running at http://localhost:4000</p>
-      </div>
-    );
-  }
+   const scoreTrend = useMemo(() => {
+      if (!recentQuizzes) return [];
+      return recentQuizzes
+         .flatMap((s: any) => s.quizzes.map((q: any) => ({
+            date: s.date,
+            title: q.title,
+            id: q._id,
+            pct: q.totalMarks > 0 ? Math.round((q.score / q.totalMarks) * 100) : 0
+         })))
+         .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+         .slice(-10);
+   }, [recentQuizzes]);
 
-  const { todayTopics, todayDPP, revisionsToday, studyStreak, gateCountdownDays, subjectProgress } = dashboard;
-
-  // Week strip (mocked locally for UI but uses current date)
-  const weekDays = (() => {
-    const days = [];
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay() + 1);
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(startOfWeek);
-      d.setDate(startOfWeek.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
-      const isToday = dateStr === new Date().toISOString().split('T')[0];
-      days.push({
-        date: dateStr,
-        day: d.toLocaleDateString('en-US', { weekday: 'short' }),
-        num: d.getDate(),
-        isToday,
-        hasDone: false, // Could be derived from analytics if needed
-        hasPending: true,
-      });
-    }
-    return days;
-  })();
-
-  const handleToggleLecture = (topic: any) => {
-    const newStatus = topic.lecture?.status === 'DONE' ? 'PENDING' : 'DONE';
-    toggleLecture.mutate({ topicId: topic.id, status: newStatus });
-  };
-
-  const handleToggleDPP = () => {
-    if (!todayDPP) return;
-    const newStatus = todayDPP.status === 'DONE' ? 'PENDING' : 'DONE';
-    updateDPP.mutate({ id: todayDPP.id, status: newStatus });
-  };
-
-  const handleRevisionAction = (id: string, status: 'DONE' | 'SNOOZED') => {
-    updateRevision.mutate({ id, status });
-  };
-
-  return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">Today's Focus</h1>
-          <p className="text-sm text-muted-foreground mt-1">Stay on track. One topic at a time.</p>
-        </div>
-        <div className="flex items-center gap-3 bg-card/50 backdrop-blur-sm border border-primary/10 px-5 py-3 rounded-2xl shadow-sm">
-          <Flame className="h-6 w-6 text-primary animate-pulse" />
-          <div>
-            <span className="block font-mono font-bold text-2xl leading-none text-foreground">{studyStreak || 0}</span>
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">day streak</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Week strip */}
-      <div className="flex gap-2">
-        {weekDays.map((d) => (
-          <div
-            key={d.date}
-            className={`flex-1 flex flex-col items-center py-3.5 rounded-2xl text-xs transition-all duration-300 transform hover:scale-105 border ${
-              d.isToday 
-                ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20' 
-                : 'bg-card/50 text-muted-foreground border-primary/5 hover:border-primary/20 hover:bg-card'
-            }`}
-          >
-            <span className="font-semibold opacity-80 uppercase tracking-tighter">{d.day}</span>
-            <span className={`font-mono text-xl font-bold mt-1 ${d.isToday ? 'text-white' : 'text-foreground'}`}>{d.num}</span>
-            <div className="flex gap-1 mt-2">
-              {d.hasDone && <div className="w-1.5 h-1.5 rounded-full bg-success" />}
-              {d.hasPending && <div className={`w-1.5 h-1.5 rounded-full ${d.isToday ? 'bg-white' : 'bg-warning'}`} />}
+   if (isLoading) {
+      return (
+         <div className="flex items-center justify-center min-h-[500px]">
+            <div className="flex flex-col items-center gap-4">
+               <Loader2 className="h-12 w-12 text-primary animate-spin" />
+               <p className="text-sm font-black uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Hub...</p>
             </div>
-          </div>
-        ))}
+         </div>
+      );
+   }
+
+   if (error || !dashboard) {
+      return (
+         <div className="p-20 text-center animate-in fade-in zoom-in duration-500">
+            <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-6">
+               <Target className="h-10 w-10 text-destructive" />
+            </div>
+            <h2 className="text-2xl font-black text-foreground">Communication Break</h2>
+            <p className="text-muted-foreground mt-2 max-w-sm mx-auto">Lost contact with the command center. Ensure your node server is running at port 5000.</p>
+         </div>
+      );
+   }
+
+   const handleToggleDPP = () => {
+      if (!dppToday) return;
+      const nextStatus = dppToday.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED';
+      updateDPP.mutate({ id: dppToday._id, status: nextStatus });
+   };
+
+   const handleRevisionAction = (id: string, status: string) => {
+      updateRevision.mutate({ id, status });
+   };
+
+   return (
+      <div className="max-w-6xl mx-auto space-y-6 md:space-y-10 animate-in fade-in duration-700 pb-20 px-4 md:px-0">
+
+         {/* ── Top Bar & Stats ──────────────────────────────────────────────── */}
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            <div className="sm:col-span-2 space-y-1 md:space-y-2 text-center sm:text-left">
+               <h1 className="font-heading text-3xl md:text-4xl font-black tracking-tight text-foreground">Command Center</h1>
+               <p className="text-xs md:text-sm text-muted-foreground font-medium flex items-center justify-center sm:justify-start gap-2">
+                  <CalendarDays className="h-4 w-4 text-primary" /> {format(new Date(), "EEEE, do MMMM yyyy")}
+               </p>
+            </div>
+
+            <Link to="/exams" className="bg-primary text-primary-foreground rounded-[2rem] p-5 md:p-6 shadow-xl shadow-primary/20 flex items-center justify-between group overflow-hidden relative transition-transform active:scale-95">
+               <div className="relative z-10">
+                  <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] opacity-70">
+                     {upcomingExams?.[0]?.title || 'Primary Target'}
+                  </span>
+                  <div className="flex items-baseline gap-1 mt-1">
+                     <span className="text-3xl md:text-4xl font-black">{gateCountdownDays || 0}</span>
+                     <span className="text-xs font-bold opacity-50 uppercase">Days</span>
+                  </div>
+               </div>
+               <Target className="h-10 w-10 md:h-12 md:w-12 opacity-20 relative z-10 transition-transform group-hover:scale-125 group-hover:rotate-12" />
+               <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
+            </Link>
+
+            <div className="bg-card/50 backdrop-blur-md border border-primary/10 rounded-[2rem] p-5 md:p-6 shadow-sm flex items-center justify-between group">
+               <div>
+                  <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Focus Streak</span>
+                  <div className="flex items-baseline gap-1 mt-1">
+                     <span className="text-3xl md:text-4xl font-black text-foreground">5</span>
+                     <span className="text-xs font-bold text-muted-foreground uppercase">Days</span>
+                  </div>
+               </div>
+               <Flame className="h-10 w-10 md:h-12 md:w-12 text-primary fill-primary/20 transition-all group-hover:scale-110 animate-pulse" />
+            </div>
+         </div>
+
+         {/* ── Multiple Exam Tickers ── */}
+         {upcomingExams.length > 1 && (
+            <div className="flex flex-wrap gap-3 md:gap-4 animate-in slide-in-from-left-4 duration-500">
+               {upcomingExams.slice(1).map((exam: any) => (
+                  <Link key={exam._id} to="/exams" className="flex-1 min-w-[140px] bg-card/40 backdrop-blur-md border border-primary/5 rounded-2xl px-4 md:px-6 py-3 flex items-center gap-3 md:gap-4 hover:border-primary/20 transition-all group">
+                     <div className="p-2 rounded-lg bg-primary/5 text-primary group-hover:scale-110 transition-transform">
+                        <Trophy className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                     </div>
+                     <div>
+                        <p className="text-[8px] md:text-[9px] font-black uppercase opacity-40 leading-none mb-1">{exam.title}</p>
+                        <p className="text-xs md:text-sm font-black leading-none">{exam.daysLeft} <span className="text-[8px] opacity-40">DAYS</span></p>
+                     </div>
+                  </Link>
+               ))}
+            </div>
+         )}
+
+         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
+
+            {/* ── Main Feed ────────────────────────────────────────────────── */}
+            <div className="lg:col-span-8 space-y-6 md:space-y-8">
+
+               {/* Velocity Chart Section */}
+               {scoreTrend.length > 0 && (
+                  <section className="bg-card/50 backdrop-blur-sm border border-primary/10 rounded-[2rem] md:rounded-[2.5rem] p-5 md:p-8 shadow-sm">
+                     <div className="flex items-center justify-between mb-4 md:mb-6">
+                        <h3 className="font-heading text-lg md:text-xl font-black flex items-center gap-3">
+                           <Zap className="h-5 w-5 text-primary" /> Quiz Velocity
+                        </h3>
+                        <Link to="/quizzes" className="text-[10px] font-black tracking-widest uppercase text-muted-foreground hover:text-primary transition-colors">See Archive</Link>
+                     </div>
+                     <div className="h-[140px] md:h-[180px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                           <BarChart data={scoreTrend}>
+                              <defs>
+                                 <linearGradient id="scoreGradDashboard" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={1} />
+                                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
+                                 </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="8 8" stroke="hsl(var(--primary) / 0.05)" vertical={false} />
+                              <XAxis dataKey="title" hide={true} />
+                              <YAxis hide={true} domain={[0, 100]} />
+                              <Tooltip
+                                 cursor={{ fill: 'hsl(var(--primary) / 0.03)', radius: 10 } as any}
+                                 contentStyle={{ background: 'hsl(var(--card))', border: 'none', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                              />
+                              <Bar dataKey="pct" radius={[8, 8, 8, 8]} fill="url(#scoreGradDashboard)" barSize={34} />
+                           </BarChart>
+                        </ResponsiveContainer>
+                     </div>
+                  </section>
+               )}
+
+               <section className="space-y-4 md:space-y-6">
+                  <div className="flex items-center justify-between px-2 md:px-0">
+                     <h3 className="font-heading text-xl md:text-2xl font-black flex items-center gap-3">
+                        <BrainCircuit className="h-5 w-5 md:h-6 md:w-6 text-primary" /> Daily Directive
+                     </h3>
+                     <Link to="/planner" className="flex items-center gap-1 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
+                        Full Protocol <ChevronRight className="h-4 w-4" />
+                     </Link>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                     {/* DPP Card */}
+                     <div className={`p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border transition-all duration-500 cursor-pointer relative overflow-hidden group ${dppToday?.status === 'COMPLETED' ? 'bg-success/5 border-success/20' : 'bg-card/50 border-primary/5 hover:border-primary/20'
+                        }`}
+                        onClick={handleToggleDPP}
+                     >
+                        <div className="flex justify-between items-start relative z-10">
+                           <div className="p-2.5 md:p-3.5 rounded-2xl bg-primary/5 text-primary group-hover:scale-110 transition-transform">
+                              <Target className="h-5 w-5 md:h-6 md:w-6" />
+                           </div>
+                           {dppToday?.status === 'COMPLETED' ? (
+                              <span className="px-3 py-1 bg-success/10 text-success text-[10px] font-black uppercase tracking-widest rounded-full">Completed</span>
+                           ) : (
+                              <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-full">DPP</span>
+                           )}
+                        </div>
+                        <div className="mt-6 md:mt-8 space-y-1 md:space-y-2 relative z-10">
+                           <h4 className="font-heading text-lg md:text-xl font-black">Daily Practice Protocol</h4>
+                           <p className="text-xs md:text-sm text-muted-foreground font-medium opacity-60">10 High-yield problems across current modules.</p>
+                        </div>
+                     </div>
+
+                     {/* Weekend Quiz (if applicable) */}
+                     {weekendQuiz && (
+                        <Link to="/quizzes" className={`p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border transition-all duration-500 relative overflow-hidden group ${weekendQuiz.status === 'COMPLETED' ? 'bg-success/5 border-success/20' : 'bg-accent/5 border-accent/20 hover:border-accent/40'
+                           }`}>
+                           <div className="flex justify-between items-start relative z-10">
+                              <div className="p-2.5 md:p-3.5 rounded-2xl bg-accent/5 text-accent group-hover:scale-110 transition-transform">
+                                 <Award className="h-5 w-5 md:h-6 md:w-6" />
+                              </div>
+                              <span className="px-3 py-1 bg-accent/10 text-accent text-[10px] font-black uppercase tracking-widest rounded-full">Weekend Special</span>
+                           </div>
+                           <div className="mt-6 md:mt-8 space-y-1 md:space-y-2 relative z-10">
+                              <h4 className="font-heading text-lg md:text-xl font-black">{weekendQuiz.dayName} Assessment</h4>
+                              <p className="text-xs md:text-sm text-muted-foreground font-medium opacity-60">{weekendQuiz.quizzes.length} Quizzes logged for this cycle.</p>
+                           </div>
+                        </Link>
+                     )}
+                  </div>
+               </section>
+
+               {/* Active Revisions */}
+               <section className="space-y-4 md:space-y-6">
+                  <div className="flex items-center justify-between px-2 md:px-0">
+                     <h3 className="font-heading text-lg md:text-xl font-black flex items-center gap-3 text-accent">
+                        <RefreshCw className="h-4 w-4 md:h-5 md:w-5" /> Repetition Feed
+                     </h3>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:gap-4">
+                     {revisionsToday.length === 0 ? (
+                        <div className="p-8 md:p-10 text-center border border-dashed border-primary/10 rounded-[2rem] md:rounded-[2.5rem] bg-card/5">
+                           <p className="text-[10px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest opacity-40">No revisions scheduled for this window.</p>
+                        </div>
+                     ) : (
+                        revisionsToday.map((rev: any) => (
+                           <div key={rev._id} className="bg-card/40 backdrop-blur-sm border border-primary/5 p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] flex flex-col sm:flex-row items-center justify-between gap-4 group hover:border-primary/15 transition-all text-center sm:text-left">
+                              <div className="flex flex-col sm:flex-row items-center gap-4 md:gap-6">
+                                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                    <BookOpen className="h-5 w-5" />
+                                 </div>
+                                 <div>
+                                    <span className="text-[8px] md:text-[9px] font-black tracking-widest uppercase bg-primary/10 text-primary px-2 py-1 rounded-lg mb-2 inline-block">
+                                       {rev.type} • R{rev.revisionNumber}
+                                    </span>
+                                    <h5 className="font-bold text-sm md:text-base leading-tight">
+                                       {rev.tags?.[0]?.chapter?.name || "General Knowledge Sync"}
+                                    </h5>
+                                    <p className="text-[9px] md:text-[10px] font-black text-muted-foreground/40 mt-1 uppercase truncate max-w-[200px]">{rev.tags?.[0]?.subject?.name}</p>
+                                 </div>
+                              </div>
+                              <div className="w-full sm:w-auto">
+                                 <Button
+                                    size="sm"
+                                    variant={rev.status === 'COMPLETED' ? 'default' : 'outline'}
+                                    className={`w-full sm:w-auto rounded-xl font-black text-[10px] uppercase tracking-widest ${rev.status === 'COMPLETED' ? 'bg-success hover:bg-success/90 border-none' : ''}`}
+                                    onClick={() => { handleRevisionAction(rev._id, rev.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED'); }}
+                                 >
+                                    {rev.status === 'COMPLETED' ? 'Done' : 'Mark Done'}
+                                 </Button>
+                           </div>
+                           </div>
+                  ))
+                     )}
+            </div>
+         </section>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Today's Topics */}
-          <div className="bg-card/50 backdrop-blur-sm border border-primary/5 rounded-3xl p-6 shadow-sm">
-            <h3 className="font-heading text-lg font-bold mb-5 flex items-center gap-3 text-foreground">
-              <div className="p-2 rounded-xl bg-primary/10">
-                <BookOpen className="h-5 w-5 text-primary" />
-              </div>
-              New Topics Taught
-              <span className="ml-auto text-xs font-mono font-medium py-1 px-3 rounded-full bg-secondary text-secondary-foreground">
-                {todayTopics.filter((t: any) => t.lecture?.status === 'DONE').length}/{todayTopics.length}
-              </span>
-            </h3>
-            {todayTopics.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
-                <div className="w-16 h-16 rounded-full bg-secondary/30 flex items-center justify-center">
-                  <span className="text-2xl">✨</span>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">All Clear!</p>
-                  <p className="text-xs text-muted-foreground">No new topics scheduled for today.</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {todayTopics.map((topic: any) => (
-                  <div
-                    key={topic.id}
-                    className={`group flex items-center gap-4 px-4 py-4 rounded-2xl cursor-pointer bg-background/40 border border-primary/5 hover:border-primary/20 hover:bg-background transition-all duration-300 ${topic.lecture?.status === 'DONE' ? 'opacity-60 grayscale-[0.5]' : ''}`}
-                    onClick={() => handleToggleLecture(topic)}
-                  >
-                    <div className="transition-transform group-hover:scale-110">
-                      {topic.lecture?.status === 'DONE' ? (
-                        <CheckCircle2 className="h-6 w-6 text-success shrink-0" />
-                      ) : (
-                        <Circle className="h-6 w-6 text-muted-foreground/30 shrink-0" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[10px] font-bold tracking-widest uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-md">Lecture</span>
-                        <span className="text-xs text-muted-foreground truncate opacity-70 italic">{topic.chapter?.name}</span>
-                      </div>
-                      <p className={`text-sm font-bold truncate ${topic.lecture?.status === 'DONE' ? 'line-through text-muted-foreground font-medium' : 'text-foreground'}`}>
-                        {topic.name}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            {/* ── Sidebar: Progress & Velocity ──────────────────────────────── */ }
+   <div className="lg:col-span-4 space-y-6 md:space-y-8">
+      <section className="bg-card/50 backdrop-blur-md border border-primary/10 rounded-[2rem] md:rounded-[3rem] p-6 md:p-8 shadow-sm space-y-6 md:space-y-8 sticky top-10">
+         <div className="flex items-center justify-between px-2">
+            <h3 className="font-heading text-lg md:text-xl font-black">Subject Gravity</h3>
+         </div>
 
-          {/* Today's DPP */}
-          {todayDPP && (
-            <div className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-card to-card border border-primary/10 rounded-3xl p-6 shadow-md group">
-              <div className="absolute top-0 right-0 p-8 opacity-5 transition-transform group-hover:scale-110 group-hover:rotate-12 translate-x-4 -translate-y-4">
-                 <BookOpen className="h-32 w-32" />
-              </div>
-              <h3 className="font-heading text-lg font-bold mb-4 flex items-center gap-3">
-                <span className="text-2xl">📋</span> Daily Practice Paper
-              </h3>
-              <div className="flex items-end justify-between relative z-10">
-                <div className="space-y-3">
-                   <p className="text-sm text-muted-foreground font-medium max-w-[200px]">Test your understanding of today's topics with targeted practice.</p>
-                   <div className="flex flex-wrap gap-1.5">
-                    {todayDPP.tags.map((tag: any, i: number) => {
-                      const s = tag.subject;
-                      return s ? (
-                        <span key={i} className="text-[10px] font-bold px-2.5 py-1 rounded-lg border border-primary/10" style={{ background: s.color + '15', color: s.color }}>
-                          {s.name}
-                        </span>
-                      ) : null;
-                    })}
+         <div className="space-y-5 md:space-y-6">
+            {subjectProgress.map((sub: any) => (
+               <div key={sub._id} className="space-y-2 md:space-y-3 group">
+                  <div className="flex justify-between items-center text-[9px] md:text-[10px] font-black uppercase tracking-widest px-1">
+                     <span className="text-muted-foreground group-hover:text-primary transition-colors">{sub.name}</span>
+                     <span className="text-primary">{sub.percent}%</span>
                   </div>
-                </div>
-                <Button
-                  size="lg"
-                  variant={todayDPP.status === 'DONE' ? 'secondary' : 'default'}
-                  className={`h-12 px-8 rounded-2xl font-bold transition-all shadow-lg ${todayDPP.status === 'DONE' ? 'bg-success/10 text-success border-success/20 hover:bg-success/20' : 'shadow-primary/20'}`}
-                  onClick={handleToggleDPP}
-                  disabled={updateDPP.isPending}
-                >
-                  {updateDPP.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  {todayDPP.status === 'DONE' ? '✓ Completed' : 'Start Solving'}
-                </Button>
-              </div>
+                  <div className="h-2 bg-secondary/50 rounded-full overflow-hidden p-0.5 border border-primary/5">
+                     <div
+                        className="h-full rounded-full transition-all duration-1000 ease-out shadow-sm"
+                        style={{
+                           width: `${sub.percent}%`,
+                           background: sub.color || 'hsl(var(--primary))',
+                           boxShadow: `0 0 10px ${sub.color || 'hsl(var(--primary))'}40`
+                        }}
+                     />
+                  </div>
+               </div>
+            ))}
+         </div>
+
+         <div className="pt-6 md:pt-8 border-t border-primary/5 space-y-4 md:space-y-6">
+            <div className="flex justify-between items-center bg-primary/5 p-4 rounded-2xl">
+               <div className="flex items-center gap-3">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest opacity-60">Daily Velocity</span>
+               </div>
+               <span className="font-mono text-xs md:text-sm font-black text-primary">+{topicsCompletedToday.length} Topics</span>
             </div>
-          )}
 
-          {/* Revisions due today */}
-          {revisionsToday.length > 0 && (
-            <div className="bg-card/50 backdrop-blur-sm border border-accent/10 rounded-3xl p-6 shadow-sm">
-              <h3 className="font-heading text-lg font-bold mb-6 flex items-center gap-3 text-accent">
-                <div className="p-2 rounded-xl bg-accent/10">
-                  <RefreshCw className="h-5 w-5" />
-                </div>
-                Review & Optimize ({revisionsToday.length})
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {revisionsToday.map((rev: any) => (
-                  <div key={rev.id} className="flex flex-col justify-between bg-background/60 border border-accent/5 rounded-2xl p-4 hover:border-accent/30 transition-all group">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <span className="text-[10px] font-bold tracking-widest uppercase bg-accent/10 text-accent px-2.5 py-1 rounded-md mb-2 inline-block">R{rev.revisionNumber}</span>
-                        <p className="text-sm font-bold text-foreground line-clamp-2 leading-tight">{rev.topic?.name}</p>
-                        <p className="text-[10px] font-medium text-muted-foreground mt-1 opacity-70 uppercase truncate">{rev.topic?.chapter?.name}</p>
-                      </div>
-                      <span className="text-2xl p-2 rounded-xl bg-accent/5">
-                        {rev.topic?.subject?.icon || '📚'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 pt-2">
-                       <Button size="sm" variant="ghost" className="flex-1 h-9 rounded-xl text-xs font-semibold hover:bg-accent/10 text-muted-foreground hover:text-accent" onClick={() => handleRevisionAction(rev.id, 'SNOOZED')}>Snooze</Button>
-                       <Button size="sm" className="flex-1 h-9 rounded-xl text-xs font-bold bg-accent hover:bg-accent/80 text-white shadow-sm" onClick={() => handleRevisionAction(rev.id, 'DONE')}>Review Done</Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+            <Link to="/analytics">
+               <Button className="w-full h-12 md:h-14 rounded-2xl bg-foreground text-background font-black uppercase tracking-[0.2em] text-[9px] md:text-[10px] shadow-xl hover:scale-[1.02] transition-all">
+                  Neural Analytics
+               </Button>
+            </Link>
+         </div>
+      </section>
+   </div>
 
-        {/* Right sidebar */}
-        <div className="space-y-6">
-          <div className="relative overflow-hidden bg-primary text-primary-foreground rounded-3xl p-8 shadow-xl shadow-primary/20 group">
-             <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
-             <p className="text-xs font-bold text-primary-foreground/70 uppercase tracking-[0.2em]">GATE Countdown</p>
-             <div className="flex items-baseline gap-2 mt-4">
-               <p className="font-mono text-6xl font-black tracking-tighter">{gateCountdownDays || 0}</p>
-               <p className="text-sm font-bold text-primary-foreground/60 uppercase">Days</p>
-             </div>
-             <div className="mt-6 w-full bg-white/20 h-1.5 rounded-full overflow-hidden">
-               <div className="bg-white h-full w-2/3" />
-             </div>
-          </div>
-
-          <div className="bg-card/50 backdrop-blur-sm border border-primary/5 rounded-3xl p-6 shadow-sm">
-            <h3 className="font-heading text-base font-bold mb-6">Mastery Level</h3>
-            <div className="space-y-6">
-              {subjectProgress.map((stat: any) => (
-                <div key={stat.subject.id} className="space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold flex items-center gap-2">
-                      <span className="text-lg">{stat.subject.icon}</span> {stat.subject.name}
-                    </span>
-                    <span className="font-mono text-muted-foreground font-bold">{Math.round(stat.progressPercent)}%</span>
-                  </div>
-                  <div className="w-full bg-secondary/50 h-2 rounded-full overflow-hidden p-0.5 border border-primary/5">
-                    <div 
-                      className="h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(0,0,0,0.1)]" 
-                      style={{ 
-                        width: `${stat.progressPercent}%`, 
-                        backgroundColor: stat.subject.color,
-                        boxShadow: `0 0 15px ${stat.subject.color}40`
-                      }} 
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-card/50 backdrop-blur-sm border border-primary/5 rounded-3xl p-6 space-y-5">
-            <h3 className="font-heading text-base font-bold">Session Stats</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { label: 'Total Topics', value: dashboard.todayTopics.length + dashboard.revisionsToday.length, color: 'text-foreground', icon: '🎯' },
-                { label: 'Completed', value: dashboard.todayTopics.filter((t: any) => t.lecture?.status === 'DONE').length, color: 'text-success', icon: '✅' },
-              ].map((stat) => (
-                <div key={stat.label} className="bg-background/40 border border-primary/5 rounded-2xl p-4 text-center group hover:border-primary/20 transition-all">
-                  <div className="text-xl mb-1">{stat.icon}</div>
-                  <p className={`font-mono text-2xl font-black ${stat.color}`}>{stat.value}</p>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+         </div >
+      </div >
+   );
 }

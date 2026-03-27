@@ -5,6 +5,7 @@ import { Filter, Loader2, CheckCircle2, Circle, Clock, MoreVertical, Edit3, Save
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 export default function DPPPage() {
   const { data: dpps, isLoading, updateDPP } = useDPPs();
@@ -75,46 +76,56 @@ export default function DPPPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-3xl font-bold tracking-tight">DPP Mastery</h1>
-          <p className="text-sm text-muted-foreground mt-1">Consistency is key. One daily practice paper at a time.</p>
+    <div className="max-w-5xl mx-auto space-y-6 md:space-y-10 animate-in fade-in duration-700 pb-20 px-4 md:px-0">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-card/40 backdrop-blur-md p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-primary/5 shadow-sm">
+        <div className="space-y-1.5 text-center md:text-left">
+           <div className="flex items-center justify-center md:justify-start gap-3">
+              <span className="px-3 py-0.5 bg-primary/10 text-primary text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-full">Protocol Feed</span>
+              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+           </div>
+           <h1 className="font-heading text-3xl md:text-4xl font-black tracking-tight text-foreground leading-tight">Daily Practice Problems</h1>
+           <p className="text-xs md:text-sm text-muted-foreground font-medium max-w-sm mx-auto md:mx-0 leading-relaxed">Precision practice for target-based learning modules</p>
         </div>
-        <div className="hidden sm:flex items-center gap-2">
-            <select 
-              value={filterSubject} 
-              onChange={(e) => setFilterSubject(e.target.value)} 
-              className="bg-card/50 backdrop-blur-sm text-xs font-bold text-foreground border border-primary/10 rounded-xl px-4 h-10 appearance-none focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-                <option value="all">All Subjects</option>
-                {subjects?.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-            <select 
-              value={filterStatus} 
-              onChange={(e) => setFilterStatus(e.target.value)} 
-              className="bg-card/50 backdrop-blur-sm text-xs font-bold text-foreground border border-primary/10 rounded-xl px-4 h-10 appearance-none focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-                <option value="all">All Status</option>
-                <option value="PENDING">Pending</option>
-                <option value="DONE">Completed</option>
-                <option value="SKIPPED">Skipped</option>
-            </select>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+            <div className="relative flex-1">
+               <select 
+                 value={filterSubject} 
+                 onChange={(e) => setFilterSubject(e.target.value)} 
+                 className="w-full bg-card/40 backdrop-blur-md text-[10px] md:text-xs font-bold text-foreground border border-primary/10 rounded-2xl px-5 h-12 md:h-11 appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
+               >
+                   <option value="all">All Modules</option>
+                   {subjects?.map((s: any) => <option key={s.id} value={s.id}>{s.name || s.id}</option>)}
+               </select>
+               <Filter className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 pointer-events-none" />
+            </div>
+            <div className="relative flex-1">
+               <select 
+                 value={filterStatus} 
+                 onChange={(e) => setFilterStatus(e.target.value)} 
+                 className="w-full bg-card/40 backdrop-blur-md text-[10px] md:text-xs font-bold text-foreground border border-primary/10 rounded-2xl px-5 h-12 md:h-11 appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
+               >
+                   <option value="all">All Status</option>
+                   <option value="PENDING">Pending Action</option>
+                   <option value="DONE">Completed Sessions</option>
+                   <option value="SKIPPED">Omitted Nodes</option>
+               </select>
+               <Filter className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 pointer-events-none" />
+            </div>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         {[
           { label: 'Papers Total', value: stats.total, color: 'text-foreground', icon: '📄' },
           { label: 'Completed', value: stats.done, color: 'text-success', icon: '✅' },
           { label: 'Active Streak', value: `${stats.streak}d`, color: 'text-primary', icon: '🔥' },
-          { label: 'Completion Rate', value: `${stats.rate}%`, color: 'text-accent', icon: '📈' },
+          { label: 'Progress Rate', value: `${stats.rate}%`, color: 'text-accent', icon: '📈' },
         ].map((s) => (
-          <div key={s.label} className="bg-card/50 backdrop-blur-sm border border-primary/5 rounded-3xl p-5 shadow-sm text-center space-y-1 group hover:border-primary/20 transition-all">
-             <div className="text-xl mb-1 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300">{s.icon}</div>
-             <p className={`font-mono text-2xl font-black ${s.color}`}>{s.value}</p>
-             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{s.label}</p>
+          <div key={s.label} className="bg-card/30 backdrop-blur-md border border-primary/5 rounded-[2rem] p-5 md:p-6 shadow-sm text-center space-y-2 group hover:border-primary/20 transition-all duration-500">
+             <div className="text-2xl md:text-3xl mb-2 opacity-70 group-hover:opacity-100 group-hover:scale-125 transition-all duration-700">{s.icon}</div>
+             <p className={`font-mono text-2xl md:text-3xl font-black tracking-tighter ${s.color}`}>{s.value}</p>
+             <p className="text-[10px] md:text-[11px] font-black text-muted-foreground uppercase tracking-[0.2em] leading-none opacity-40">{s.label}</p>
           </div>
         ))}
       </div>
@@ -134,50 +145,58 @@ export default function DPPPage() {
             const isEditing = editingId === dpp.id;
 
             return (
-              <div key={dpp.id} className={`group relative bg-card/50 backdrop-blur-sm rounded-[2rem] border transition-all duration-300 overflow-hidden ${isToday ? 'border-primary/30 shadow-lg shadow-primary/5' : 'border-primary/5 hover:border-primary/20'}`}>
-                <div className="p-6 md:p-8 space-y-6">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-4">
-                             <div className={`p-3 rounded-2xl flex items-center justify-center transition-colors ${dpp.status === 'DONE' ? 'bg-success/10 text-success' : 'bg-primary/10 text-primary'}`}>
-                                {dpp.status === 'DONE' ? <CheckCircle2 className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
+              <div key={dpp.id} className={`group relative bg-card/10 backdrop-blur-xl rounded-[2.5rem] border transition-all duration-500 overflow-hidden ${isToday ? 'border-primary/40 bg-card/20 shadow-2xl shadow-primary/5' : 'border-primary/5 hover:border-primary/20 shadow-sm'}`}>
+                <div className="p-6 md:p-10 space-y-6 md:space-y-8">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                        <div className="flex items-center gap-5 text-left">
+                             <div className={`w-14 h-14 md:w-16 md:h-16 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-center transition-all duration-700 shadow-inner group-hover:scale-110 ${dpp.status === 'DONE' ? 'bg-success/10 text-success' : 'bg-primary/20 text-primary'}`}>
+                                {dpp.status === 'DONE' ? <CheckCircle2 className="h-7 w-7 md:h-8 md:w-8" /> : <Clock className="h-7 w-7 md:h-8 md:w-8" />}
                              </div>
-                             <div>
-                                <h4 className="font-heading text-lg font-bold text-foreground leading-tight">{dateLabel}</h4>
-                                {isToday && <span className="text-[10px] font-black text-primary tracking-widest uppercase">Current Assignment</span>}
+                             <div className="space-y-1">
+                                <h4 className="font-heading text-xl md:text-2xl font-black text-foreground leading-none">{dateLabel}</h4>
+                                {isToday && (
+                                   <div className="flex items-center gap-2">
+                                      <span className="text-[10px] font-black text-primary tracking-[0.2em] uppercase">Target Manifest</span>
+                                      <div className="h-1 w-1 rounded-full bg-primary animate-ping" />
+                                   </div>
+                                )}
                              </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between lg:justify-end gap-5 w-full lg:w-auto pt-2 lg:pt-0">
                             {!isEditing && dpp.score !== null && (
-                                <div className="hidden sm:flex flex-col items-end px-4">
-                                    <span className="text-[10px] font-black text-muted-foreground opacity-40 uppercase tracking-tighter">Performance</span>
-                                    <p className="font-mono text-xl font-black text-primary">{dpp.score}<span className="text-sm opacity-50 font-normal">/{dpp.totalMarks}</span></p>
+                                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center px-4 md:px-6 py-3 md:py-0 bg-primary/5 md:bg-transparent rounded-2xl border border-primary/5 md:border-none">
+                                    <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.1em] mb-0.5">Performance index</span>
+                                    <div className="flex items-baseline gap-1">
+                                       <span className="font-mono text-2xl md:text-3xl font-black text-primary leading-none">{dpp.score}</span>
+                                       <span className="font-mono text-xs md:text-sm opacity-30 font-bold">/{dpp.totalMarks}</span>
+                                    </div>
                                 </div>
                             )}
                             <Button 
                               size="lg"
                               variant={dpp.status === 'DONE' ? 'secondary' : 'default'}
-                              className={`h-11 px-8 rounded-2xl font-black transition-all shadow-lg ${dpp.status === 'DONE' ? 'bg-success/10 text-success border-success/10 hover:bg-success/20' : 'shadow-primary/20'}`}
+                              className={`h-14 md:h-16 px-10 rounded-2xl md:rounded-[1.5rem] font-black tracking-widest text-[11px] transition-all duration-300 transform active:scale-95 shadow-xl ${dpp.status === 'DONE' ? 'bg-success/5 text-success border border-success/20 hover:bg-success/10' : 'shadow-primary/30 bg-primary hover:bg-primary/90'}`}
                               onClick={() => handleToggleStatus(dpp)}
                             >
-                                {dpp.status === 'DONE' ? 'MASTERED' : 'MARK DONE'}
+                                {dpp.status === 'DONE' ? 'ANALYSIS COMPLETED' : 'SYNCHRONIZE SESSION'}
                             </Button>
                         </div>
                     </div>
 
                     {/* Auto-tags */}
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 md:gap-3">
                         {dpp.tags.map((tag: any, i: number) => (
-                           <div key={i} className="flex items-center gap-2 bg-background/50 border border-primary/5 px-3 py-1.5 rounded-xl">
-                              <span className="text-base">{tag.subject?.icon}</span>
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase">{tag.topic?.name}</span>
+                           <div key={i} className="flex items-center gap-2 md:gap-3 bg-primary/5 border border-primary/10 px-4 py-2 rounded-xl group/tag hover:bg-primary/10 transition-colors">
+                              <span className="text-lg md:text-xl group-hover/tag:scale-110 transition-transform">{tag.subject?.icon || '🔬'}</span>
+                              <span className="text-[10px] md:text-[11px] font-black text-muted-foreground uppercase tracking-wider">{tag.topic?.name}</span>
                            </div>
                         ))}
                     </div>
 
                     {/* Editor Panel */}
                     {isEditing ? (
-                        <div className="bg-background/80 p-6 rounded-2xl border border-primary/20 space-y-4 animate-in slide-in-from-top-2 duration-300">
-                             <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-background/80 p-5 md:p-6 rounded-2xl border border-primary/20 space-y-4 animate-in slide-in-from-top-2 duration-300 relative z-20">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase tracking-widest">Score Obtained</Label>
                                     <Input 

@@ -1,216 +1,297 @@
-import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Calendar as CalendarIcon, BookOpen, RefreshCw } from "lucide-react";
-import { usePlanner } from "@/hooks/usePlanner";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from 'react';
+import { 
+  Calendar as CalendarIcon, 
+  ChevronLeft, 
+  ChevronRight, 
+  BookOpen, 
+  RefreshCw, 
+  Target, 
+  Plus, 
+  MoreHorizontal,
+  Loader2,
+  Award,
+  Zap
+} from 'lucide-react';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, addDays, eachDayOfInterval } from 'date-fns';
+import api from '../lib/rest-client';
+import { Link } from 'react-router-dom';
 
-export default function Planner() {
+const Planner: React.FC = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
-  
-  const { logs, revisions, isLoading } = usePlanner(currentMonth);
+  const [selectedDate, setSelectedDate] = useState<string | null>(format(new Date(), 'yyyy-MM-dd'));
+  const [plannerData, setPlannerData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayOfMonth = new Date(year, month, 1).getDay();
-  // Adjust so Monday is 0. standard getDay() is 0 for Sunday
-  const firstDayOfWeek = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
-  const todayStr = new Date().toISOString().split('T')[0];
+  useEffect(() => {
+    fetchPlannerData();
+  }, [currentMonth]);
 
-  const calendarDays = useMemo(() => {
-    const days: (number | null)[] = [];
-    for (let i = 0; i < firstDayOfWeek; i++) days.push(null);
-    for (let d = 1; d <= daysInMonth; d++) days.push(d);
-    return days;
-  }, [daysInMonth, firstDayOfWeek]);
-
-  const getDateStr = (day: number) => {
-    const d = new Date(year, month, day, 12);
-    return d.toISOString().split('T')[0];
+  const fetchPlannerData = async () => {
+    try {
+      setLoading(true);
+      const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
+      const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+      const response = await api.get(`/planner?start=${start}&end=${end}`);
+      setPlannerData(response.data);
+    } catch (error) {
+      console.error('Error fetching planner data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const dayData = useMemo(() => {
-    const map: Record<string, any> = {};
-    logs.forEach((log: any) => {
-      const d = log.date.split('T')[0];
-      if (!map[d]) map[d] = { topics: [], revisions: [], markers: new Set() };
-      log.entries?.forEach((e: any) => {
-        if (e.topic) {
-          map[d].topics.push(e.topic);
-          if (e.topic.subject) map[d].markers.add(e.topic.subject.color);
-        }
-      });
-    });
-    revisions.forEach((rev: any) => {
-      const d = rev.scheduledDate.split('T')[0];
-      if (!map[d]) map[d] = { topics: [], revisions: [], markers: new Set() };
-      map[d].revisions.push(rev);
-      if (rev.topic?.subject) map[d].markers.add(rev.topic.subject.color);
-    });
-    return map;
-  }, [logs, revisions]);
+  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, -1));
 
-  const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
+  const renderHeader = () => (
+    <div className="flex items-center justify-between mb-8 px-2 md:px-4">
+      <div className="space-y-1">
+        <h2 className="text-2xl md:text-4xl font-black font-heading tracking-tight text-foreground">
+          {format(currentMonth, 'MMMM yyyy')}
+        </h2>
+        <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-[0.3em] opacity-50">Mission Timeline</p>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="h-10 w-10 md:h-12 md:w-12 rounded-2xl bg-card border border-primary/10 flex items-center justify-center hover:bg-primary/10 transition-all shadow-sm">
+          <ChevronLeft className="h-5 w-5 md:h-6 md:w-6" />
+        </button>
+        <button onClick={nextMonth} className="h-10 w-10 md:h-12 md:w-12 rounded-2xl bg-card border border-primary/10 flex items-center justify-center hover:bg-primary/10 transition-all shadow-sm">
+          <ChevronRight className="h-5 w-5 md:h-6 md:w-6" />
+        </button>
+      </div>
+    </div>
+  );
 
-  const selectedDayInfo = selectedDate ? dayData[selectedDate] : null;
+  const renderDays = () => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return (
+      <div className="grid grid-cols-7 mb-4">
+        {days.map(day => (
+          <div key={day} className="text-center text-[10px] md:text-xs font-black text-muted-foreground uppercase tracking-widest opacity-40 py-2">
+            {day}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderCells = () => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(monthStart);
+    const startDate = startOfWeek(monthStart);
+    const endDate = endOfWeek(monthEnd);
+
+    const rows = [];
+    let days = [];
+    let day = startDate;
+
+    const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+
+    return (
+      <div className="grid grid-cols-7 gap-1 md:gap-3">
+        {allDays.map((d, i) => {
+          const dateStr = format(d, 'yyyy-MM-dd');
+          const dayData = plannerData?.[dateStr];
+          const isSelected = selectedDate === dateStr;
+          const isCurrentMonth = isSameMonth(d, monthStart);
+          const hasActivity = dayData && (dayData.topics.length > 0 || dayData.revisions.length > 0 || dayData.dpps.length > 0 || dayData.pyqs.length > 0);
+
+          return (
+            <div 
+              key={dateStr}
+              onClick={() => setSelectedDate(dateStr)}
+              className={`
+                relative aspect-square md:aspect-auto md:h-32 rounded-xl md:rounded-3xl border transition-all cursor-pointer group flex flex-col p-2 md:p-4
+                ${!isCurrentMonth ? 'opacity-20 pointer-events-none' : 'opacity-100'}
+                ${isSelected ? 'bg-primary border-primary shadow-xl shadow-primary/20 scale-[0.98]' : 'bg-card/50 border-primary/5 hover:border-primary/20 hover:bg-card'}
+              `}
+            >
+              <span className={`text-xs md:text-lg font-black ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
+                {format(d, 'd')}
+              </span>
+
+              {hasActivity && !isSelected && (
+                <div className="mt-auto flex flex-wrap gap-0.5 md:gap-1">
+                   {dayData.topics.length > 0 && <div className="h-1 w-1 md:h-2 md:w-2 rounded-full bg-primary" />}
+                   {dayData.revisions.length > 0 && <div className="h-1 w-1 md:h-2 md:w-2 rounded-full bg-accent" />}
+                   {(dayData.dpps.length > 0 || dayData.pyqs.length > 0) && <div className="h-1 w-1 md:h-2 md:w-2 rounded-full bg-destructive" />}
+                </div>
+              )}
+              
+              {isSelected && (
+                <div className="absolute top-2 right-2 md:top-4 md:right-4 h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-white animate-pulse" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const selectedDayInfo = selectedDate ? plannerData?.[selectedDate] : null;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-3xl font-bold tracking-tight">Daily Planner</h1>
-          <p className="text-sm text-muted-foreground mt-1">Calendar view of your study schedule</p>
-        </div>
-        <div className="flex items-center gap-3 bg-secondary/30 p-1.5 rounded-2xl border border-primary/5">
-           <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(new Date())} className="h-9 w-9 text-xs font-bold rounded-xl hidden sm:flex">Today</Button>
-           <Button variant="ghost" size="icon" onClick={prevMonth} className="h-9 w-9 rounded-xl"><ChevronLeft className="h-5 w-5" /></Button>
-           <h2 className="font-heading font-bold px-4 text-sm w-36 text-center">{currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
-           <Button variant="ghost" size="icon" onClick={nextMonth} className="h-9 w-9 rounded-xl"><ChevronRight className="h-5 w-5" /></Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Calendar grid */}
-        <div className="lg:col-span-7 bg-card/50 backdrop-blur-sm border border-primary/5 rounded-[2.5rem] p-6 shadow-sm overflow-hidden">
-          <div className="grid grid-cols-7 gap-2">
-            {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((d) => (
-              <div key={d} className="text-center text-[10px] font-black text-muted-foreground/50 py-4 tracking-widest">{d}</div>
-            ))}
-            {calendarDays.map((day, i) => {
-              if (!day) return <div key={`empty-${i}`} className="aspect-square opacity-0" />;
-              const dateStr = getDateStr(day);
-              const isToday = dateStr === todayStr;
-              const isSelected = dateStr === selectedDate;
-              const info = dayData[dateStr];
-
-              return (
-                <div
-                  key={day}
-                  onClick={() => setSelectedDate(dateStr)}
-                  className={`relative aspect-square flex flex-col items-center justify-center rounded-2xl text-sm transition-all duration-300 cursor-pointer group border ${
-                    isSelected ? 
-                      'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 transform scale-105 z-10' :
-                      isToday ? 
-                        'bg-primary/10 text-primary border-primary/30' : 
-                        'bg-background/40 hover:bg-background border-transparent hover:border-primary/10'
-                  }`}
-                >
-                  <span className={`font-mono text-base font-bold ${isToday && !isSelected ? 'text-primary' : ''}`}>{day}</span>
-                  {info?.markers.size > 0 && (
-                    <div className="absolute bottom-2.5 flex justify-center gap-1 w-full px-1">
-                      {Array.from(info.markers).slice(0, 4).map((c: any, idx) => (
-                        <div key={idx} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white/80' : ''}`} style={{ background: isSelected ? undefined : c }} />
-                      ))}
-                    </div>
-                  )}
-                  {info?.topics.length > 0 && !isSelected && (
-                     <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
-                  )}
+    <div className="min-h-screen bg-background p-4 md:p-8 pb-24 md:pb-8">
+      <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
+        
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-10">
+          
+          {/* ── Main Calendar Grid ────────────────────────────────────────── */}
+          <div className="lg:col-span-12 xl:col-span-8 space-y-6 md:space-y-8">
+            {renderHeader()}
+            <div className="bg-card/30 backdrop-blur-md border border-primary/5 rounded-[2rem] md:rounded-[3rem] p-4 md:p-8 shadow-2xl">
+              {renderDays()}
+              {!loading ? renderCells() : (
+                <div className="flex justify-center pt-10">
+                  <Loader2 className="h-8 w-8 text-primary animate-spin opacity-40" />
                 </div>
-              );
-            })}
-          </div>
-          {isLoading && (
-            <div className="flex justify-center pt-6">
-              <Loader2 className="h-5 w-5 text-primary animate-spin" />
+              )}
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Selected day content */}
-        <div className="lg:col-span-5 bg-card/50 backdrop-blur-sm border border-primary/5 rounded-[2.5rem] p-8 shadow-sm h-full min-h-[400px]">
-          {selectedDate ? (
-            <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
-              <div className="flex items-center gap-4 border-b border-primary/5 pb-6">
-                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                   <CalendarIcon className="h-7 w-7" />
-                </div>
-                <div>
-                   <h3 className="font-heading text-xl font-bold text-foreground">
-                    {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' })}
-                  </h3>
-                  <p className="text-sm font-bold text-muted-foreground opacity-70">
-                    {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                  </p>
-                </div>
-              </div>
-
-              {selectedDayInfo ? (
-                <div className="space-y-8">
-                  {selectedDayInfo.topics.length > 0 && (
-                    <div className="space-y-4">
-                      <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary/60">
-                        <BookOpen className="h-3 w-3" /> New Topics Learned
-                      </h4>
-                      <div className="space-y-3">
-                        {selectedDayInfo.topics.map((t: any) => (
-                          <div key={t.id} className="group relative flex items-center gap-4 bg-background/50 border border-primary/5 rounded-2xl p-4 transition-all hover:border-primary/20">
-                            <div className="w-2 h-8 rounded-full" style={{ background: t.subject?.color }} />
-                            <div className="flex-1 min-w-0">
-                               <p className="text-sm font-bold text-foreground truncate leading-tight">{t.name}</p>
-                               <span className="text-[10px] font-bold text-muted-foreground opacity-50 uppercase tracking-wider">{t.subject?.name}</span>
-                            </div>
-                            <span className="absolute top-2 right-4 text-xl opacity-20 transition-opacity group-hover:opacity-100">{t.subject?.icon}</span>
-                          </div>
-                        ))}
+          {/* ── Side Event View ───────────────────────────────────────────── */}
+          <div className="lg:col-span-12 xl:col-span-4 space-y-6">
+            <div className="bg-card/60 backdrop-blur-xl border border-primary/5 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 shadow-sm min-h-[300px] md:min-h-[500px]">
+              {selectedDate ? (
+                <div className="space-y-6 md:space-y-8 animate-in slide-in-from-right-10 duration-500">
+                  <div className="border-b border-primary/10 pb-6 md:pb-8 flex items-center justify-between">
+                      <div className="space-y-1">
+                         <h3 className="font-heading text-xl md:text-2xl font-black text-foreground">
+                           {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}
+                         </h3>
+                         <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-primary opacity-70">
+                           {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' })} Expedition
+                         </p>
                       </div>
-                    </div>
-                  )}
+                      <Link to="/curriculum" className="h-9 w-9 md:h-10 md:w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary hover:bg-primary shadow-sm hover:text-white transition-all transform hover:rotate-12">
+                         <Plus className="h-4 w-4 md:h-5 md:w-5" />
+                      </Link>
+                  </div>
 
-                  {selectedDayInfo.revisions.length > 0 && (
-                    <div className="space-y-4">
-                      <h4 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-accent/60">
-                         <RefreshCw className="h-3 w-3" /> Scheduled Revisions
-                      </h4>
-                      <div className="grid grid-cols-1 gap-3">
-                        {selectedDayInfo.revisions.map((r: any) => (
-                           <div key={r.id} className="flex items-center gap-4 bg-background/50 border border-accent/10 rounded-2xl p-4 hover:border-accent/30 transition-all">
-                              <div className="flex flex-col items-center justify-center bg-accent/10 text-accent font-mono text-xs font-black w-10 h-10 rounded-xl">
-                                R{r.revisionNumber}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                 <p className="text-sm font-bold text-foreground truncate leading-tight">{r.topic?.name}</p>
-                                 <div className="flex items-center gap-2 mt-0.5">
-                                   <span className="text-[9px] font-bold text-muted-foreground opacity-60 uppercase">{r.topic?.subject?.name}</span>
-                                   <div className={`w-1.5 h-1.5 rounded-full ${r.status === 'DONE' ? 'bg-success' : 'bg-warning'}`} />
-                                   <span className="text-[9px] font-bold text-muted-foreground opacity-40 uppercase">{r.status}</span>
+                  {selectedDayInfo ? (
+                    <div className="space-y-8 md:space-y-10">
+                      
+                      {/* Topics Learned */}
+                      {selectedDayInfo.topics.length > 0 && (
+                        <div className="space-y-3 md:space-y-4">
+                          <label className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
+                             <BookOpen className="w-3 h-3 text-primary" /> Lectures Consumed
+                          </label>
+                          <div className="space-y-2 md:space-y-3">
+                            {selectedDayInfo.topics.map((t: any) => (
+                              <div key={t._id} className="group flex items-center gap-3 md:gap-4 bg-background/50 border border-primary/5 rounded-2xl md:rounded-[1.5rem] p-3 md:p-4 hover:border-primary/20 transition-all">
+                                 <div className="w-1 h-6 md:w-1.5 md:h-8 rounded-full bg-primary/20 transition-all group-hover:h-8 md:group-hover:h-10 group-hover:bg-primary" />
+                                 <div className="flex-1 min-w-0">
+                                    <p className="text-xs md:text-sm font-black text-foreground leading-tight truncate">{t.name}</p>
+                                    <p className="text-[8px] md:text-[9px] font-bold text-muted-foreground opacity-60 uppercase mt-0.5 md:mt-1 truncate">{t.subject?.name}</p>
                                  </div>
                               </div>
-                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                  {selectedDayInfo.topics.length === 0 && selectedDayInfo.revisions.length === 0 && (
-                    <EmptyDayMessage />
+                      {/* Revisions */}
+                      {selectedDayInfo.revisions.length > 0 && (
+                        <div className="space-y-3 md:space-y-4">
+                          <label className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
+                             <RefreshCw className="w-3 h-3 text-accent" /> Active Revisions
+                          </label>
+                          <div className="space-y-2 md:space-y-3">
+                            {selectedDayInfo.revisions.map((r: any) => (
+                              <div key={r._id} className="flex items-center gap-3 md:gap-4 bg-accent/5 border border-accent/10 rounded-2xl md:rounded-[1.5rem] p-3 md:p-4">
+                                 <div className="h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-accent text-accent-foreground font-mono text-[10px] md:text-xs font-black flex items-center justify-center shadow-lg shadow-accent/10">R{r.revisionNumber}</div>
+                                 <div className="flex-1 min-w-0">
+                                    <p className="text-xs md:text-sm font-black text-foreground truncate leading-tight">{r.tags?.[0]?.topic?.name || r.title || 'General Review'}</p>
+                                    <div className="flex items-center gap-2 mt-0.5 md:mt-1">
+                                       <div className={`h-1.5 w-1.5 rounded-full ${r.status === 'DONE' ? 'bg-success' : 'bg-warning'}`} />
+                                       <span className="text-[8px] md:text-[9px] font-bold text-muted-foreground uppercase opacity-60 tracking-wider font-mono">{r.status}</span>
+                                    </div>
+                                 </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Mixed Feed */}
+                      {(selectedDayInfo.dpps.length > 0 || selectedDayInfo.pyqs.length > 0 || selectedDayInfo.tests.length > 0 || selectedDayInfo.quizzes.length > 0) && (
+                         <div className="space-y-3 md:space-y-4">
+                            <label className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
+                               <Target className="w-3 h-3 text-destructive" /> Assessment Vault
+                            </label>
+                            <div className="space-y-2 md:space-y-3">
+                               {selectedDayInfo.dpps.map((d: any) => (
+                                 <Link key={d._id} to="/dpp" className="flex items-center gap-3 md:gap-4 bg-background/50 border border-primary/5 rounded-2xl md:rounded-[1.5rem] p-3 md:p-4 transition-all hover:border-primary/20">
+                                    <div className="h-8 w-8 md:h-10 md:w-10 flex items-center justify-center bg-primary/10 text-primary rounded-lg md:rounded-xl font-black text-[10px] md:text-xs">D</div>
+                                    <div className="flex-1 min-w-0">
+                                       <p className="text-xs md:text-sm font-black text-foreground">Practice Paper Pack</p>
+                                       <p className={`text-[8px] md:text-[9px] font-bold uppercase tracking-widest ${d.status === 'COMPLETED' ? 'text-success' : 'text-muted-foreground opacity-50'}`}>{d.status}</p>
+                                    </div>
+                                 </Link>
+                               ))}
+                               {selectedDayInfo.pyqs.map((p: any) => (
+                                 <Link key={p._id} to="/pyq" className="flex items-center gap-3 md:gap-4 bg-background/50 border border-primary/5 rounded-2xl md:rounded-[1.5rem] p-3 md:p-4 transition-all hover:border-primary/20">
+                                    <div className="h-8 w-8 md:h-10 md:w-10 flex items-center justify-center bg-primary/10 text-primary rounded-lg md:rounded-xl font-black text-[10px] md:text-xs">P</div>
+                                    <div className="flex-1 min-w-0">
+                                       <p className="text-xs md:text-sm font-black text-foreground truncate">{p.title}</p>
+                                       <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-primary/60">Past Year Question</p>
+                                    </div>
+                                 </Link>
+                               ))}
+                               {selectedDayInfo.tests.map((t: any) => (
+                                 <Link key={t._id} to="/test-series" className="flex items-center gap-3 md:gap-4 bg-destructive/5 border border-destructive/10 rounded-2xl md:rounded-[1.5rem] p-3 md:p-4 hover:bg-destructive/10 transition-all group">
+                                    <Award className="h-5 w-5 md:h-6 md:w-6 text-destructive group-hover:scale-110 transition-transform" />
+                                    <div className="flex-1 min-w-0">
+                                       <p className="text-xs md:text-sm font-black text-foreground truncate">{t.title}</p>
+                                       <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-destructive/60">{t.type}</p>
+                                    </div>
+                                 </Link>
+                               ))}
+                               {selectedDayInfo.quizzes.map((q: any) => (
+                                 <Link key={q._id} to="/quizzes" className="flex items-center gap-3 md:gap-4 bg-accent/5 border border-accent/10 rounded-2xl md:rounded-[1.5rem] p-3 md:p-4 hover:bg-accent/10 transition-all group">
+                                    <Zap className="h-5 w-5 md:h-6 md:w-6 text-accent animate-pulse" />
+                                    <div className="flex-1 min-w-0">
+                                       <p className="text-xs md:text-sm font-black text-foreground">Assessment Quizzes</p>
+                                       <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-accent/60">{q.quizzes?.length || 0} Units Locked</p>
+                                    </div>
+                                 </Link>
+                               ))}
+                            </div>
+                         </div>
+                      )}
+
+                      {/* All Empty */}
+                      {!selectedDayInfo.topics.length && !selectedDayInfo.revisions.length && !selectedDayInfo.dpps.length && !selectedDayInfo.pyqs.length && !selectedDayInfo.tests.length && !selectedDayInfo.quizzes.length && (
+                         <div className="flex flex-col items-center justify-center py-12 md:py-24 text-center space-y-4 opacity-30">
+                            <MoreHorizontal className="h-10 w-10 md:h-12 md:w-12" />
+                            <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em]">Rest Protocol Active</p>
+                         </div>
+                      )}
+                    </div>
+                  ) : (
+                     <div className="flex flex-col items-center justify-center py-12 md:py-24 text-center space-y-4 opacity-30">
+                        <MoreHorizontal className="h-10 w-10 md:h-12 md:w-12" />
+                        <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em]">No Recorded Activity</p>
+                     </div>
                   )}
                 </div>
               ) : (
-                <EmptyDayMessage />
+                  <div className="flex flex-col items-center justify-center h-full py-12 md:py-20 text-center space-y-5 opacity-30">
+                     <CalendarIcon className="h-12 w-12 md:h-16 md:w-16" />
+                     <div className="space-y-1">
+                        <p className="font-black text-xs md:text-sm uppercase tracking-[0.2em]">Oracle Calendar</p>
+                        <p className="text-[9px] md:text-[10px] font-bold">Select a node to inspect logs</p>
+                     </div>
+                  </div>
               )}
             </div>
-          ) : (
-             <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-40">
-                <CalendarIcon className="h-16 w-16" />
-                <p className="font-bold text-sm uppercase tracking-widest">Select a day to view details</p>
-             </div>
-          )}
+          </div>
+
         </div>
       </div>
     </div>
   );
 }
 
-function EmptyDayMessage() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-      <div className="w-20 h-20 bg-secondary/30 rounded-full flex items-center justify-center text-4xl">🌤️</div>
-      <div>
-        <p className="font-bold text-foreground">Peaceful Day</p>
-        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider opacity-60">Nothing scheduled for today</p>
-      </div>
-    </div>
-  );
-}
+export default Planner;
