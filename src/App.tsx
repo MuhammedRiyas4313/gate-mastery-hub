@@ -14,6 +14,8 @@ import DPPs from "./pages/DPPs";
 import TestSeries from "./pages/TestSeries";
 import Analytics from "./pages/Analytics";
 import Exams from "./pages/Exams";
+import Timer from "./pages/Timer";
+import Schedules from "./pages/Schedules";
 
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -49,6 +51,8 @@ const App = () => {
                 <Route path="/test-series" element={<TestSeries />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/exams" element={<Exams />} />
+                <Route path="/timer" element={<Timer />} />
+                <Route path="/schedules" element={<Schedules />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Layout>

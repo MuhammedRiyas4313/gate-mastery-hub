@@ -31,7 +31,7 @@ export default function Analytics() {
     );
   }
 
-  const { readinessScore, subjectProgress, revisionBySlot, pyqByDifficulty, activityHeatmap } = data;
+  const { readinessScore, subjectProgress, revisionBySlot, pyqByDifficulty, activityHeatmap, streak = 0 } = data;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 md:space-y-10 animate-in fade-in duration-700 pb-20 px-4 md:px-0">
@@ -93,7 +93,7 @@ export default function Analytics() {
            </h3>
            <div className="space-y-5 md:space-y-6">
               {[
-                { label: 'Consistency', val: readinessScore > 70 ? 'Extreme' : 'Nominal', icon: <Zap className="h-4 w-4" /> },
+                { label: 'Consistency', val: streak > 0 ? `${streak} DAY STREAK` : 'Nominal', icon: <Zap className="h-4 w-4" /> },
                 { label: 'Accuracy', val: '82%', icon: <Target className="h-4 w-4" /> },
                 { label: 'Potential', val: 'AIR < 500', icon: <Award className="h-4 w-4" /> },
               ].map(stat => (
@@ -123,12 +123,12 @@ export default function Analytics() {
            
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
             {subjectProgress?.map((sub: any) => (
-              <div key={sub.subject.id} className="space-y-4 group p-5 md:p-6 rounded-[2rem] md:rounded-[2.5rem] bg-background/40 border border-transparent hover:border-primary/10 hover:bg-background/80 transition-all duration-500 shadow-sm">
+              <div key={sub.subject.id} className="space-y-4 group p-5 md:p-6 rounded-[2rem] md:rounded-[2.5rem] bg-background/40 border border-transparent hover:border-primary/10 hover:bg-background/80 transition-all duration-500 shadow-sm overflow-hidden">
                 <div className="flex justify-between items-center text-left">
-                   <div className="flex items-center gap-3 md:gap-4">
+                   <div className="flex items-center gap-3 md:gap-4 min-w-0">
                       <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-primary/5 flex items-center justify-center text-xl md:text-2xl group-hover:scale-110 transition-all shadow-sm shrink-0">{sub.subject.icon || '📚'}</div>
                       <div className="min-w-0">
-                         <span className="font-black text-xs md:text-sm block truncate leading-tight uppercase tracking-tight">{sub.subject.name}</span>
+                         <span className="font-black text-xs md:text-sm block truncate leading-tight uppercase tracking-tight" title={sub.subject.name}>{sub.subject.name}</span>
                          <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase opacity-60 leading-none">{sub.doneTopics}/{sub.totalTopics} Units</span>
                       </div>
                    </div>

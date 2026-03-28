@@ -15,8 +15,24 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "sonner";
 
 export default function TestSeries() {
-  const { data: tests, isLoading, addTestSeries, updateTestSeries, deleteTestSeries } = useTestSeries();
+  // ── Server-side filters ────────────────────────────────────────────────────
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterType, setFilterType] = useState('all');
+  const [filterSubject, setFilterSubject] = useState('all');
+  const [filterChapter, setFilterChapter] = useState('all');
+
+  const { data: tests, isLoading, isFetching, addTestSeries, updateTestSeries, deleteTestSeries } = useTestSeries({
+    status: filterStatus,
+    type: filterType,
+    subjectId: filterSubject,
+    chapterId: filterChapter,
+  });
   const { data: subjects } = useSubjects();
+
+  const filterSubjectData = useMemo(
+    () => subjects?.find((s: any) => s._id === filterSubject),
+    [subjects, filterSubject]
+  );
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [testToDelete, setTestToDelete] = useState<any>(null);
@@ -149,111 +165,97 @@ export default function TestSeries() {
     }
   };
 
-  const byType = useMemo(() => {
-    if (!tests) return { chapter: [], subject: [], full: [] };
-    return {
-      chapter: tests.filter((t: any) => t.type === 'CHAPTER'),
-      subject: tests.filter((t: any) => t.type === 'SUBJECT'),
-      full: tests.filter((t: any) => t.type === 'FULL_LENGTH')
-    };
-  }, [tests]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-10 w-10 text-primary animate-spin" />
-      </div>
-    );
-  }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 md:space-y-10 animate-in fade-in duration-500 pb-20 px-4 md:px-0">
-      
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-card/40 backdrop-blur-md p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-primary/5 shadow-sm">
-        <div className="space-y-1.5 text-center md:text-left">
-           <div className="flex items-center justify-center md:justify-start gap-3">
-              <span className="px-3 py-0.5 bg-primary/10 text-primary text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-full">Assessment Vault</span>
-              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-           </div>
-           <h1 className="font-heading text-3xl md:text-4xl font-black tracking-tight text-foreground leading-tight">Test Series</h1>
-           <p className="text-xs md:text-sm text-muted-foreground font-medium max-w-sm mx-auto md:mx-0 leading-relaxed">Coordinate your performance evaluations and mock outcomes.</p>
+    <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-500 pb-20 px-4 md:px-0">
+
+      {/* ── Compact Filter Bar ────────────────────────────────────────────── */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="font-heading text-3xl md:text-4xl font-black tracking-tight text-foreground">Test Series</h1>
+          <p className="text-xs md:text-sm text-muted-foreground font-medium">Coordinate your performance evaluations and mock outcomes</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
-           <div className="flex items-center gap-4 bg-background/40 backdrop-blur-sm px-5 py-3 md:px-6 md:py-4 rounded-2xl md:rounded-3xl border border-primary/10 shadow-inner flex-1 md:flex-none">
-              <Trophy className="h-5 w-5 md:h-6 md:w-6 text-primary" />
-              <div className="text-left">
-                 <p className="text-[9px] md:text-[10px] font-black uppercase text-muted-foreground opacity-60 leading-none mb-1">Attempted</p>
-                 <p className="text-lg md:text-xl font-black text-primary leading-none uppercase">{tests?.filter((t:any)=>t.status==='COMPLETED').length}</p>
-              </div>
-           </div>
-           <Button onClick={handleCreateNew} className="w-full md:w-auto rounded-2xl h-14 md:h-12 font-black shadow-xl shadow-primary/20 px-8 bg-primary hover:scale-105 transition-all text-xs md:text-sm flex items-center justify-center shrink-0">
-             <Plus className="h-5 w-5 mr-3" /> New Test
-           </Button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="flex-1 sm:w-36 h-12 rounded-xl bg-card border-primary/10 text-xs font-bold">
+              <Target className="w-3.5 h-3.5 mr-2 opacity-50" />
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="ONGOING">Ongoing</SelectItem>
+              <SelectItem value="COMPLETED">Completed</SelectItem>
+              <SelectItem value="MISSED">Missed</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterType} onValueChange={(v) => { setFilterType(v); setFilterSubject('all'); setFilterChapter('all'); }}>
+            <SelectTrigger className="flex-1 sm:w-36 h-12 rounded-xl bg-card border-primary/10 text-xs font-bold">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="CHAPTER">Chapter</SelectItem>
+              <SelectItem value="SUBJECT">Subject</SelectItem>
+              <SelectItem value="FULL_LENGTH">Full Length</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterSubject} onValueChange={(v) => { setFilterSubject(v); setFilterChapter('all'); }}>
+            <SelectTrigger className="flex-1 sm:w-40 h-12 rounded-xl bg-card border-primary/10 text-xs font-bold">
+              <SelectValue placeholder="All Subjects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Subjects</SelectItem>
+              {subjects?.map((s: any) => (
+                <SelectItem key={s._id} value={s._id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {filterSubject !== 'all' && filterSubjectData?.chapters?.length > 0 && (
+            <Select value={filterChapter} onValueChange={setFilterChapter}>
+              <SelectTrigger className="flex-1 sm:w-40 h-12 rounded-xl bg-card border-primary/10 text-xs font-bold">
+                <SelectValue placeholder="All Chapters" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Chapters</SelectItem>
+                {filterSubjectData.chapters.map((c: any) => (
+                  <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Button onClick={handleCreateNew} className="w-full sm:w-auto rounded-xl h-12 font-black shadow-lg shadow-primary/20 px-6 bg-primary shrink-0">
+            <Plus className="h-5 w-5 mr-2" /> New Test
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-16">
-        {byType.full.length > 0 && (
-           <section className="space-y-8 animate-in slide-in-from-bottom-10 duration-700">
-              <div className="flex items-center gap-4">
-                 <div className="h-10 w-10 md:h-12 md:w-12 bg-destructive/10 rounded-xl md:rounded-2xl flex items-center justify-center text-destructive shadow-lg shadow-destructive/5 shrink-0">
-                    <TrendingUp className="h-5 w-5 md:h-6 md:w-6" />
-                 </div>
-                 <div className="space-y-0.5">
-                    <h3 className="font-heading text-xl md:text-2xl font-black text-foreground">Full Length Mocks</h3>
-                    <p className="text-[10px] md:text-xs text-muted-foreground font-medium uppercase tracking-widest opacity-50">Exam Simulation</p>
-                 </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                 {byType.full.map((test: any) => (
-                    <TestCard key={test._id} test={test} onEdit={handleEditClick} onToggleStatus={handleToggleStatus} />
-                 ))}
-              </div>
-           </section>
+      {/* ── Cards Grid ────────────────────────────────────────────────────── */}
+      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 transition-opacity duration-200 ${isFetching ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
+        {isLoading ? (
+          <div className="col-span-full flex items-center justify-center py-20">
+            <Loader2 className="h-10 w-10 text-primary animate-spin" />
+          </div>
+        ) : (tests ?? []).map((test: any) => (
+          <TestCard key={test._id} test={test} onEdit={handleEditClick} onToggleStatus={handleToggleStatus} />
+        ))}
+
+        {!isLoading && (!tests || tests.length === 0) && (
+          <div className="col-span-full py-20 text-center bg-card/20 rounded-[2.5rem] border border-dashed border-primary/10 flex flex-col items-center justify-center">
+            <Trophy className="h-12 w-12 text-muted-foreground/30 mb-4" />
+            <h3 className="font-heading text-xl font-bold text-foreground mb-2">No Tests Found</h3>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              {filterStatus !== 'all' || filterSubject !== 'all' || filterType !== 'all'
+                ? 'No tests match your current filters. Try adjusting them.'
+                : 'Add your first test to start tracking your assessment performance.'}
+            </p>
+          </div>
         )}
-
-        <section className="space-y-8">
-           <div className="flex items-center gap-4">
-              <div className="h-12 w-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent shadow-lg shadow-accent/5">
-                 <BookOpen className="h-6 w-6" />
-              </div>
-              <div>
-                 <h3 className="font-heading text-2xl font-black text-foreground">Subject Mastery</h3>
-                 <p className="text-xs text-muted-foreground font-medium mt-0.5 uppercase tracking-widest opacity-50">Vertical Domains</p>
-              </div>
-           </div>
-           <div className="grid grid-cols-1 md:grid-cols-1 xl:grid-cols-2 gap-8">
-              {byType.subject.length === 0 ? (
-                <EmptyState icon={<Award className="w-10 h-10" />} text="Finish a subject to see mastery tests here." />
-              ) : (
-                byType.subject.map((test: any) => (
-                   <TestCard key={test._id} test={test} onEdit={handleEditClick} onToggleStatus={handleToggleStatus} />
-                ))
-              )}
-           </div>
-        </section>
-
-        <section className="space-y-8">
-           <div className="flex items-center gap-4">
-              <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-lg shadow-primary/5">
-                 <Layers className="h-6 w-6" />
-              </div>
-              <div>
-                 <h3 className="font-heading text-2xl font-black text-foreground">Chapter Evaluations</h3>
-                 <p className="text-xs text-muted-foreground font-medium mt-0.5 uppercase tracking-widest opacity-50">Spaced repetition feed</p>
-              </div>
-           </div>
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {byType.chapter.length === 0 ? (
-                <EmptyState icon={<Target className="w-10 h-10" />} text="Chapter tests appear automatically upon lecture completion." />
-              ) : (
-                byType.chapter.map((test: any) => (
-                   <TestCard key={test._id} test={test} onEdit={handleEditClick} onToggleStatus={handleToggleStatus} />
-                ))
-              )}
-           </div>
-        </section>
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -437,61 +439,70 @@ function TestCard({ test, onEdit, onToggleStatus }: { test: any, onEdit: (t: any
   const isSubject = test.type === 'SUBJECT';
   const isFull = test.type === 'FULL_LENGTH';
   const pct = test.totalMarks > 0 ? (test.score / test.totalMarks) * 100 : 0;
-  
+
   return (
-    <div className="bg-card/40 backdrop-blur-xl rounded-[3rem] p-10 border border-primary/5 hover:border-primary/20 transition-all duration-700 shadow-sm relative overflow-hidden group">
-       <div className={`absolute top-0 right-0 p-12 opacity-[0.03] -translate-y-8 translate-x-8 group-hover:scale-125 group-hover:rotate-12 transition-transform ${isSubject ? 'text-accent' : isFull ? 'text-destructive' : 'text-primary'}`}>
-          {isSubject ? <BookOpen className="h-48 w-48" /> : isFull ? <TrendingUp className="h-48 w-48" /> : <Layers className="h-48 w-48" />}
-       </div>
+    <div className="bg-card/40 backdrop-blur-xl rounded-[1.5rem] p-4 md:p-5 border border-primary/5 hover:border-primary/20 transition-all duration-300 shadow-sm group">
+      <div className="space-y-3">
+        {/* Top row: status + type badge */}
+        <div className="flex items-center justify-between gap-2">
+          <button
+            onClick={(e) => onToggleStatus(e, test)}
+            className={`px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 border shrink-0 ${
+              test.status === 'COMPLETED' ? 'bg-success/10 text-success border-success/20' :
+              test.status === 'ONGOING'   ? 'bg-warning/10 text-warning border-warning/20 animate-pulse' :
+              test.status === 'MISSED'    ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                                            'bg-primary/5 text-primary/60 border-primary/10'
+            }`}
+          >
+            {test.status}
+          </button>
+          <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg ${
+            isSubject ? 'bg-accent/10 text-accent' : isFull ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
+          }`}>
+            {test.type?.replace('_', ' ')}
+          </span>
+        </div>
 
-       <div className="space-y-8 relative z-10">
-          <div className="flex items-start justify-between">
-             <button 
-               onClick={(e) => onToggleStatus(e, test)}
-               className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-sm border ${
-                 test.status === 'COMPLETED' ? 'bg-success/10 text-success border-success/20' : 
-                 test.status === 'ONGOING' ? 'bg-warning/10 text-warning border-warning/20 animate-pulse' : 
-                 test.status === 'MISSED' ? 'bg-destructive/10 text-destructive border-destructive/20' :
-                 'bg-primary/5 text-primary/60 border-primary/10'
-             }`}>
-                {test.status}
-             </button>
-             <div className="flex flex-col items-end">
-                <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest">{test.type?.replace('_', ' ')}</span>
-                <p className="text-[10px] font-bold text-primary mt-1 opacity-60">ID: {test?._id?.slice(-6).toUpperCase()}</p>
-             </div>
+        {/* Title + meta */}
+        <div>
+          <h4
+            className="font-heading text-sm font-bold text-foreground leading-tight group-hover:text-primary transition-colors cursor-pointer line-clamp-2"
+            onClick={() => onEdit(test)}
+          >
+            {test.title}
+          </h4>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[9px] font-bold text-muted-foreground/60 uppercase tracking-wider">
+            <span className="flex items-center gap-1"><CalendarIcon className="h-2.5 w-2.5" />{format(new Date(test.date || test.createdAt), 'dd MMM yyyy')}</span>
+            {test.subject?.name && <span>• {test.subject.name}</span>}
           </div>
+        </div>
 
-          <div className="space-y-2">
-             <h4 className="font-heading text-xl md:text-2xl font-black text-foreground leading-[1.1] group-hover:text-primary transition-colors cursor-pointer" onClick={() => onEdit(test)}>{test.title}</h4>
-             <div className="flex items-center gap-4 text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">
-                <span className="flex items-center gap-2"><CalendarIcon className="h-3 w-3" /> {format(new Date(test.date || test.createdAt), "dd MMM yyyy")}</span>
-                {test.subject?.name && <span className="flex items-center gap-2">• {test.subject.name}</span>}
-             </div>
+        {/* Score + progress */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center">
+            <span className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-widest">Score</span>
+            <div>
+              <span className="font-mono text-base font-black text-primary">{test.score || 0}</span>
+              <span className="font-mono text-[10px] opacity-30 font-bold ml-0.5">/{test.totalMarks || 100}</span>
+            </div>
           </div>
+          <div className="h-1.5 bg-secondary/30 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-[1.5s] ease-out ${pct >= 70 ? 'bg-success' : pct >= 40 ? 'bg-warning' : 'bg-destructive'}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
 
-          <div className="space-y-4 pt-2 md:pt-4">
-             <div className="flex justify-between items-end mb-2">
-                <span className="text-[9px] md:text-[10px] font-black text-muted-foreground/50 uppercase tracking-[0.2em]">Efficiency</span>
-                <div className="text-right">
-                   <span className="font-mono text-2xl md:text-3xl font-black text-primary leading-none">{test.score || 0}</span>
-                   <span className="font-mono text-xs md:text-sm opacity-30 font-bold ml-1">/{test.totalMarks || 100}</span>
-                </div>
-             </div>
-             <div className="h-2.5 bg-secondary/30 rounded-full overflow-hidden p-0.5 shadow-inner">
-                <div 
-                   className={`h-full rounded-full transition-all duration-[1.5s] ease-out shadow-sm ${pct >= 70 ? 'bg-success' : pct >= 40 ? 'bg-warning' : 'bg-destructive'}`}
-                   style={{ width: `${pct}%` }} 
-                />
-             </div>
-          </div>
-
-          <div className="grid grid-cols-1 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-             <Button variant="outline" className="h-12 rounded-2xl font-black text-xs uppercase tracking-widest border-primary/10 hover:bg-primary hover:text-white transition-all shadow-sm" onClick={() => onEdit(test)}>
-                Configure Assessment
-             </Button>
-          </div>
-       </div>
+        {/* Configure button — shown on hover */}
+        <Button
+          variant="outline"
+          className="w-full h-8 rounded-xl font-bold text-[10px] uppercase tracking-widest border-primary/10 hover:bg-primary hover:text-white transition-all opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 duration-300"
+          onClick={() => onEdit(test)}
+        >
+          Configure
+        </Button>
+      </div>
     </div>
   );
 }

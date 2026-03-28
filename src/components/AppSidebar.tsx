@@ -22,13 +22,19 @@ const items = [
   { title: "Quizzes", url: "/quizzes", icon: FlaskConical },
   { title: "DPP", url: "/dpp", icon: ClipboardList },
   { title: "Test Series", url: "/test-series", icon: Trophy },
+  { title: "Institute Logs", url: "/schedules", icon: FileText },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
+
+import { SidebarFooter } from "@/components/ui/sidebar";
+import { LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export function AppSidebar() {
   const { state, setOpenMobile, isMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { logout, user } = useAuth();
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -77,6 +83,17 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="p-4 border-t border-primary/5">
+        <button
+          onClick={() => logout()}
+          className={`flex items-center gap-3 w-full px-3 py-3 rounded-xl transition-all hover:bg-destructive/10 text-muted-foreground hover:text-destructive active:scale-95 ${collapsed ? 'justify-center' : ''}`}
+          title="Logout"
+        >
+          <LogOut className="h-5 w-5 shrink-0" />
+          {!collapsed && <span className="font-bold text-sm tracking-tight">Logout</span>}
+        </button>
+      </SidebarFooter>
     </Sidebar>
   );
 }

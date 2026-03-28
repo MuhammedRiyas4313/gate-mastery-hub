@@ -1,13 +1,14 @@
-import { Bell, Calendar, LogOut, Loader2 } from "lucide-react";
+import { Bell, Calendar, Zap, Loader2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useAuth } from "@/hooks/useAuth";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { Link, useLocation } from "react-router-dom";
 
 export function TopBar() {
   const { data, isLoading } = useDashboard();
-  const { logout } = useAuth();
+  const location = useLocation();
   
   const todayFormatted = useMemo(() => new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'short', day: 'numeric', year: 'numeric',
@@ -53,15 +54,17 @@ export function TopBar() {
               )}
             </button>
             <div className="w-px h-6 bg-primary/5 mx-2" />
-            <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={logout} 
-                className="h-10 w-10 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                title="Logout"
+            <Link 
+                to="/timer"
+                className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all ${
+                  location.pathname === '/timer' 
+                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-110' 
+                  : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                }`}
+                title="Module Timer"
             >
-                <LogOut className="h-5 w-5" />
-            </Button>
+                <Zap className={`h-5 w-5 ${location.pathname === '/timer' ? 'fill-current' : ''}`} />
+            </Link>
         </div>
       </div>
     </header>

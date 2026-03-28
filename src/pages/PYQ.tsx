@@ -15,17 +15,27 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "sonner";
 
 export default function PYQ() {
-  const { data: pyqs, isLoading, addPYQ, updatePYQ, deletePYQ } = usePYQs();
+  const [filterSubject, setFilterSubject] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterChapter, setFilterChapter] = useState('all');
+
+  const { data: pyqs, isLoading, isFetching, addPYQ, updatePYQ, deletePYQ } = usePYQs({
+    status: filterStatus,
+    subjectId: filterSubject,
+    chapterId: filterChapter,
+  });
   const { data: subjects } = useSubjects();
+
+  const filterSubjectData = useMemo(
+    () => subjects?.find((s: any) => s._id === filterSubject),
+    [subjects, filterSubject]
+  );
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [pyqToDelete, setPyqToDelete] = useState<any>(null);
 
   const [editOpen, setEditOpen] = useState(false);
   const [selectedPYQ, setSelectedPYQ] = useState<any>(null);
-  
-  const [filterSubject, setFilterSubject] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
 
   const [form, setForm] = useState({
     title: '',
@@ -149,21 +159,6 @@ export default function PYQ() {
     }
   };
 
-  const filtered = useMemo(() => {
-    if (!pyqs) return [];
-    let list = [...pyqs];
-    if (filterSubject !== 'all') list = list.filter((p: any) => p.subject?._id === filterSubject || p.subject === filterSubject);
-    if (filterStatus !== 'all') list = list.filter((p: any) => p.status === filterStatus);
-    return list;
-  }, [pyqs, filterSubject, filterStatus]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-10 w-10 text-primary animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 md:space-y-10 animate-in fade-in duration-500 pb-20 px-4 md:px-0">
@@ -174,40 +169,54 @@ export default function PYQ() {
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
            {/* Filters */}
-           <div className="flex gap-2 flex-1 sm:flex-initial">
-             <Select value={filterSubject} onValueChange={setFilterSubject}>
-               <SelectTrigger className="flex-1 sm:w-36 h-12 rounded-xl bg-card border-primary/10 text-xs font-bold">
-                 <Filter className="w-3.5 h-3.5 mr-2 opacity-50" />
-                 <SelectValue placeholder="Subject" />
+           <Select value={filterStatus} onValueChange={setFilterStatus}>
+             <SelectTrigger className="flex-1 sm:w-36 h-12 rounded-xl bg-card border-primary/10 text-xs font-bold">
+               <Filter className="w-3.5 h-3.5 mr-2 opacity-50" />
+               <SelectValue placeholder="Status" />
+             </SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">All Status</SelectItem>
+               <SelectItem value="PENDING">Pending</SelectItem>
+               <SelectItem value="ONGOING">Ongoing</SelectItem>
+               <SelectItem value="COMPLETED">Completed</SelectItem>
+             </SelectContent>
+           </Select>
+           <Select value={filterSubject} onValueChange={(v) => { setFilterSubject(v); setFilterChapter('all'); }}>
+             <SelectTrigger className="flex-1 sm:w-40 h-12 rounded-xl bg-card border-primary/10 text-xs font-bold">
+               <SelectValue placeholder="All Subjects" />
+             </SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">All Subjects</SelectItem>
+               {subjects?.map((s: any) => (
+                 <SelectItem key={s._id} value={s._id}>{s.name}</SelectItem>
+               ))}
+             </SelectContent>
+           </Select>
+           {filterSubject !== 'all' && filterSubjectData?.chapters?.length > 0 && (
+             <Select value={filterChapter} onValueChange={setFilterChapter}>
+               <SelectTrigger className="flex-1 sm:w-40 h-12 rounded-xl bg-card border-primary/10 text-xs font-bold">
+                 <SelectValue placeholder="All Chapters" />
                </SelectTrigger>
                <SelectContent>
-                 <SelectItem value="all">All Subjects</SelectItem>
-                 {subjects?.map((s: any) => (
-                   <SelectItem key={s._id} value={s._id}>{s.name}</SelectItem>
+                 <SelectItem value="all">All Chapters</SelectItem>
+                 {filterSubjectData.chapters.map((c: any) => (
+                   <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>
                  ))}
                </SelectContent>
              </Select>
-             <Select value={filterStatus} onValueChange={setFilterStatus}>
-               <SelectTrigger className="flex-1 sm:w-36 h-12 rounded-xl bg-card border-primary/10 text-xs font-bold">
-                 <SelectValue placeholder="Status" />
-               </SelectTrigger>
-               <SelectContent>
-                 <SelectItem value="all">All Status</SelectItem>
-                 <SelectItem value="PENDING">Pending</SelectItem>
-                 <SelectItem value="ONGOING">Ongoing</SelectItem>
-                 <SelectItem value="COMPLETED">Completed</SelectItem>
-               </SelectContent>
-             </Select>
-           </div>
-           
+           )}
            <Button onClick={handleCreateNew} className="w-full sm:w-auto rounded-xl h-12 font-black shadow-lg shadow-primary/20 px-6 bg-primary">
              <Plus className="h-5 w-5 mr-2" /> Add PYQ
            </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {filtered.map((pyq: any) => (
+      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 transition-opacity duration-200 ${isFetching ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
+        {isLoading ? (
+          <div className="col-span-full flex items-center justify-center py-20">
+            <Loader2 className="h-10 w-10 text-primary animate-spin" />
+          </div>
+        ) : (pyqs ?? []).map((pyq: any) => (
           <div key={pyq._id} className="bg-card/40 backdrop-blur-md rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 border border-primary/5 hover:border-primary/20 transition-all duration-500 shadow-sm relative overflow-hidden group">
             <div className="space-y-6 relative z-10">
                <div className="flex items-start justify-between">
@@ -260,7 +269,7 @@ export default function PYQ() {
           </div>
         ))}
 
-        {filtered.length === 0 && (
+        {!isLoading && (!pyqs || pyqs.length === 0) && (
           <div className="col-span-full py-20 text-center bg-card/20 rounded-[2.5rem] border border-dashed border-primary/10 flex flex-col items-center justify-center">
              <Layers className="h-12 w-12 text-muted-foreground/30 mb-4" />
              <h3 className="font-heading text-xl font-bold text-foreground mb-2">No PYQs Found</h3>

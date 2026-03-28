@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,55 +6,61 @@
 
 @layer base {
   :root {
-    --background: 225 20% 7%;
-    --foreground: 225 30% 93%;
+    /* ── GO-T Electric Blue Theme ─────────────────── */
 
-    --card: 228 20% 14%;
-    --card-foreground: 225 30% 93%;
+    /* Backgrounds — deep blue-black */
+    --background: 200 30% 5%;
+    --foreground: 186 20% 94%;
 
-    --popover: 228 22% 12%;
-    --popover-foreground: 225 30% 93%;
+    --card: 200 25% 9%;
+    --card-foreground: 186 20% 94%;
 
-    --primary: 36 90% 55%;
-    --primary-foreground: 225 20% 7%;
+    --popover: 200 28% 8%;
+    --popover-foreground: 186 20% 94%;
 
-    --secondary: 228 18% 18%;
-    --secondary-foreground: 225 30% 93%;
+    /* Primary — Hot Pink #ec4899 */
+    --primary: 330 81% 60%;
+    --primary-foreground: 200 30% 5%;
 
-    --muted: 228 15% 20%;
-    --muted-foreground: 228 15% 55%;
+    --secondary: 200 22% 14%;
+    --secondary-foreground: 186 20% 94%;
 
-    --accent: 180 60% 53%;
-    --accent-foreground: 225 20% 7%;
+    --muted: 200 20% 16%;
+    --muted-foreground: 200 18% 52%;
 
-    --destructive: 0 60% 55%;
-    --destructive-foreground: 225 30% 93%;
+    /* Accent — violet for complementary pop */
+    --accent: 262 70% 62%;
+    --accent-foreground: 200 30% 5%;
 
-    --success: 152 42% 49%;
-    --success-foreground: 225 20% 7%;
+    --destructive: 0 65% 57%;
+    --destructive-foreground: 186 20% 94%;
 
-    --warning: 46 85% 60%;
-    --warning-foreground: 225 20% 7%;
+    --success: 160 55% 45%;
+    --success-foreground: 200 30% 5%;
 
-    --surface: 228 20% 12%;
+    --warning: 40 90% 58%;
+    --warning-foreground: 200 30% 5%;
 
-    --border: 228 15% 22%;
-    --input: 228 15% 22%;
-    --ring: 36 90% 55%;
+    --surface: 200 25% 8%;
+
+    --border: 200 18% 18%;
+    --input: 200 18% 18%;
+    --ring: 330 81% 60%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 228 22% 10%;
-    --sidebar-foreground: 225 30% 93%;
-    --sidebar-primary: 36 90% 55%;
-    --sidebar-primary-foreground: 225 20% 7%;
-    --sidebar-accent: 228 18% 16%;
-    --sidebar-accent-foreground: 225 30% 93%;
-    --sidebar-border: 228 15% 18%;
-    --sidebar-ring: 36 90% 55%;
+    /* Sidebar */
+    --sidebar-background: 200 28% 7%;
+    --sidebar-foreground: 186 20% 94%;
+    --sidebar-primary: 330 81% 60%;
+    --sidebar-primary-foreground: 200 30% 5%;
+    --sidebar-accent: 200 22% 13%;
+    --sidebar-accent-foreground: 186 20% 94%;
+    --sidebar-border: 200 18% 15%;
+    --sidebar-ring: 330 81% 60%;
 
-    --font-heading: 'Lora', serif;
-    --font-body: 'DM Sans', sans-serif;
+    --font-heading: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
 }
@@ -78,18 +84,24 @@
   }
 }
 
-/* Custom scrollbar for dark theme */
+/* Scrollbar — electric blue tint */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(228 22% 10%);
+  background: hsl(200 28% 7%);
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(228 15% 28%);
+  background: hsl(186 60% 22%);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(228 15% 35%);
+  background: hsl(186 80% 35%);
+}
+
+/* Selection highlight */
+::selection {
+  background: hsl(330 81% 60% / 0.25);
+  color: hsl(330 20% 94%);
 }

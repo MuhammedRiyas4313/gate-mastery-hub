@@ -1,4 +1,5 @@
 import { useDashboard } from "@/hooks/useDashboard";
+import { useAuth } from "@/hooks/useAuth";
 import {
    CheckCircle2,
    Circle,
@@ -24,6 +25,7 @@ import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 export default function Dashboard() {
+   const { user } = useAuth();
    const {
       data: dashboard,
       isLoading,
@@ -43,7 +45,8 @@ export default function Dashboard() {
       recentQuizzes = [],
       gateCountdownDays,
       upcomingExams = [],
-      subjectProgress = []
+      subjectProgress = [],
+      streak = 0
    } = dashboard || {};
 
    const scoreTrend = useMemo(() => {
@@ -98,7 +101,9 @@ export default function Dashboard() {
          {/* ── Top Bar & Stats ──────────────────────────────────────────────── */}
          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             <div className="sm:col-span-2 space-y-1 md:space-y-2 text-center sm:text-left">
-               <h1 className="font-heading text-3xl md:text-4xl font-black tracking-tight text-foreground">Command Center</h1>
+               <h1 className="font-heading text-3xl md:text-4xl font-black tracking-tight text-foreground">
+                  Welcome, <span className="text-primary">{dashboard?.user?.name || user?.name || 'Commander'}</span>
+               </h1>
                <p className="text-xs md:text-sm text-muted-foreground font-medium flex items-center justify-center sm:justify-start gap-2">
                   <CalendarDays className="h-4 w-4 text-primary" /> {format(new Date(), "EEEE, do MMMM yyyy")}
                </p>
@@ -122,8 +127,8 @@ export default function Dashboard() {
                <div>
                   <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Focus Streak</span>
                   <div className="flex items-baseline gap-1 mt-1">
-                     <span className="text-3xl md:text-4xl font-black text-foreground">5</span>
-                     <span className="text-xs font-bold text-muted-foreground uppercase">Days</span>
+                     <span className="text-3xl md:text-4xl font-black text-foreground">{streak}</span>
+                     <span className="text-xs font-bold text-muted-foreground uppercase">{streak === 1 ? 'Day' : 'Days'}</span>
                   </div>
                </div>
                <Flame className="h-10 w-10 md:h-12 md:w-12 text-primary fill-primary/20 transition-all group-hover:scale-110 animate-pulse" />
@@ -259,9 +264,11 @@ export default function Dashboard() {
                                        {rev.type} • R{rev.revisionNumber}
                                     </span>
                                     <h5 className="font-bold text-sm md:text-base leading-tight">
-                                       {rev.tags?.[0]?.chapter?.name || "General Knowledge Sync"}
+                                       {rev.tags?.[0]?.topic?.name || rev.tags?.[0]?.chapter?.name || rev.title || "General Knowledge Sync"}
                                     </h5>
-                                    <p className="text-[9px] md:text-[10px] font-black text-muted-foreground/40 mt-1 uppercase truncate max-w-[200px]">{rev.tags?.[0]?.subject?.name}</p>
+                                    <p className="text-[9px] md:text-[10px] font-black text-muted-foreground/40 mt-1 uppercase truncate max-w-[200px]">
+                                       {rev.tags?.[0]?.subject?.name || "General Strategy"}
+                                    </p>
                                  </div>
                               </div>
                               <div className="w-full sm:w-auto">
