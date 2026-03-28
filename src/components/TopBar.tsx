@@ -1,4 +1,4 @@
-import { Bell, Calendar, Zap, Loader2 } from "lucide-react";
+import { Calendar, Zap, Loader2, Clock } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,12 +14,6 @@ export function TopBar() {
     weekday: 'long', month: 'short', day: 'numeric', year: 'numeric',
   }), []);
 
-  const overdueCount = useMemo(() => {
-    if (!data) return 0;
-    const overdueRevs = data.revisionsToday?.filter((r: any) => r.status === 'PENDING' || r.status === 'SNOOZED').length || 0;
-    const dppPending = data.todayDPP?.status === 'PENDING' ? 1 : 0;
-    return overdueRevs + dppPending;
-  }, [data]);
 
   return (
     <header className="h-16 flex items-center justify-between px-4 md:px-8 bg-background/50 backdrop-blur-xl border-b border-primary/5 sticky top-0 z-40">
@@ -45,15 +39,6 @@ export function TopBar() {
         )}
 
         <div className="flex items-center gap-1.5 ml-2">
-            <button className="relative p-2.5 rounded-xl hover:bg-secondary transition-all group">
-              <Bell className="h-5 w-5 text-muted-foreground/60 group-hover:text-primary" />
-              {overdueCount > 0 && (
-                <span className="absolute top-2 right-2 bg-primary text-primary-foreground text-[8px] font-black rounded-full h-4 w-4 flex items-center justify-center border-2 border-background">
-                  {overdueCount}
-                </span>
-              )}
-            </button>
-            <div className="w-px h-6 bg-primary/5 mx-2" />
             <Link 
                 to="/timer"
                 className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all ${
@@ -63,7 +48,7 @@ export function TopBar() {
                 }`}
                 title="Module Timer"
             >
-                <Zap className={`h-5 w-5 ${location.pathname === '/timer' ? 'fill-current' : ''}`} />
+                <Clock className={`h-5 w-5 ${location.pathname === '/timer' ? 'fill-current' : ''}`} />
             </Link>
         </div>
       </div>

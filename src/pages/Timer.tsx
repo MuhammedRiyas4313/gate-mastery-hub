@@ -5,7 +5,6 @@ import {
     Pause,
     RotateCcw,
     CheckCircle2,
-    Timer as TimerIcon,
     BookOpen,
     Layers,
     Clock,
@@ -401,7 +400,7 @@ export default function TimerPage() {
                         <div className="relative z-10 w-full space-y-5 sm:space-y-8">
                             <div className="flex flex-col items-center gap-2">
                                 <div className="p-3 sm:p-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-full">
-                                    <TimerIcon className="h-6 w-6 sm:h-9 sm:w-9 text-white animate-pulse" />
+                                    <Clock className="h-6 w-6 sm:h-9 sm:w-9 text-white animate-pulse" />
                                 </div>
                                 <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${activeSubject ? 'bg-white/15 text-white/90' : 'bg-white/5 text-white/35'}`}>
                                     {activeSubject ? `${activeSubject.icon || '📚'} ${activeSubject.name}` : '⏱️ Untagged Session'}
