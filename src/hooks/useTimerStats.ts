@@ -15,9 +15,19 @@ export interface DailyTimerStats {
   }[];
 }
 
+export interface Session {
+  _id: string;
+  duration: number;
+  startTime: string;
+  endTime?: string;
+  subject?: { _id: string; name: string; icon: string; color: string } | null;
+  chapter?: { _id: string; name: string } | null;
+}
+
 export interface TimerStatsResponse {
   allTime: DailyTimerStats;
   daily: DailyTimerStats[];
+  sessions: Session[];
 }
 
 export const useTimerStats = () => {

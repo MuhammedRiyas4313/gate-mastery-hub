@@ -1,18 +1,34 @@
 import { Calendar, Zap, Loader2, Clock } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useDashboard } from "@/hooks/useDashboard";
-import { useAuth } from "@/hooks/useAuth";
-import { useMemo } from "react";
-import { Button } from "@/components/ui/button";
+import { useStore } from "@/store/useStore";
+import { useMemo, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 export function TopBar() {
   const { data, isLoading } = useDashboard();
   const location = useLocation();
+  const activeTimer = useStore(state => state.activeTimer);
+  const [activeSeconds, setActiveSeconds] = useState(0);
   
   const todayFormatted = useMemo(() => new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'short', day: 'numeric', year: 'numeric',
   }), []);
+
+  // Sync with active timer
+  useEffect(() => {
+    if (!activeTimer) return;
+    
+    const update = () => {
+      const start = new Date(activeTimer.startTime).getTime();
+      const now = Date.now();
+      setActiveSeconds(Math.floor((now - start) / 1000));
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [activeTimer]);
 
 
   return (
@@ -38,20 +54,40 @@ export function TopBar() {
             </div>
         )}
 
-        <div className="flex items-center gap-1.5 ml-2">
+        <div className="flex items-center gap-1.5 ml-2 relative">
             <Link 
                 to="/timer"
-                className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all ${
+                className={`h-10 px-3 flex items-center justify-center gap-2 rounded-xl transition-all ${
                   location.pathname === '/timer' 
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-110' 
+                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105' 
                   : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
                 }`}
                 title="Module Timer"
             >
-                <Clock className={`h-5 w-5 ${location.pathname === '/timer' ? 'fill-current' : ''}`} />
+                <div className="relative">
+                  <Clock className={`h-5 w-5 ${location.pathname === '/timer' ? 'fill-current' : ''}`} />
+                  {activeTimer && (
+                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                    </span>
+                  )}
+                </div>
+                {activeTimer && (
+                  <span className="font-mono text-xs font-black tracking-tighter min-w-[54px]">
+                    {formatTime(activeSeconds)}
+                  </span>
+                )}
             </Link>
         </div>
       </div>
     </header>
   );
 }
+
+const formatTime = (s: number) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+};

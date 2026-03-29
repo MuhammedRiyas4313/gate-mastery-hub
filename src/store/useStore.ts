@@ -112,6 +112,7 @@ interface StoreState {
   gateExamDate: string;
   streak: number;
   lastActiveDate: string;
+  activeTimer: { startTime: string; subjectId?: string; chapterId?: string } | null;
 
   // Subject CRUD
   addSubject: (s: Omit<Subject, 'id'>) => void;
@@ -155,6 +156,10 @@ interface StoreState {
   // Misc
   updateStreak: () => void;
   setGateExamDate: (date: string) => void;
+
+  // Timer
+  startTimer: (subjectId?: string, chapterId?: string) => void;
+  stopTimer: () => void;
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -183,6 +188,7 @@ export const useStore = create<StoreState>()(
       gateExamDate: '2027-02-01',
       streak: 0,
       lastActiveDate: '',
+      activeTimer: null,
 
       // ── Subjects ──
       addSubject: (s) => set((st) => ({ subjects: [...st.subjects, { ...s, id: uid() }] })),
@@ -328,6 +334,16 @@ export const useStore = create<StoreState>()(
       }),
 
       setGateExamDate: (date) => set({ gateExamDate: date }),
+
+      // ── Timer ──
+      startTimer: (subjectId, chapterId) => set({
+        activeTimer: {
+          startTime: new Date().toISOString(),
+          subjectId,
+          chapterId,
+        }
+      }),
+      stopTimer: () => set({ activeTimer: null }),
     }),
     { name: 'gate-tracker-store-v2' }
   )
