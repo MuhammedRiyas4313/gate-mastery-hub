@@ -1,12 +1,22 @@
 import { useSubjects } from "@/hooks/useSubjects";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useState } from "react";
-import { Plus, ChevronDown, ChevronRight, Trash2, Loader2, BookOpen, CheckCircle2, MoreVertical } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Trash2, Loader2, BookOpen, CheckCircle2, MoreVertical, AlertTriangle, Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
 
 const STATUS_COLORS = {
   pending: 'text-muted-foreground bg-secondary/30',
@@ -17,10 +27,9 @@ const STATUS_COLORS = {
 export default function Subjects() {
   const { 
     data: subjects, isLoading, 
-    addSubject, updateSubject,
-    addChapter, updateChapter, 
-    addTopic, updateTopic,
-    deleteChapter, deleteTopic 
+    addSubject, updateSubject, deleteSubject,
+    addChapter, updateChapter, deleteChapter,
+    addTopic, updateTopic, deleteTopic 
   } = useSubjects();
   const { toggleLecture } = useDashboard();
 
@@ -33,6 +42,23 @@ export default function Subjects() {
   const [chapForm, setChapForm] = useState({ name: '' });
   const [topicForm, setTopicForm] = useState({ name: '', dateTaught: new Date().toISOString().split('T')[0] });
 
+  // Edit states
+  const [editSubOpen, setEditSubOpen] = useState(false);
+  const [editingSubId, setEditingSubId] = useState<string | null>(null);
+  const [editSubForm, setEditSubForm] = useState({ name: '', icon: '📘', color: '#4f8ef7' });
+
+  const [editChapOpen, setEditChapOpen] = useState(false);
+  const [editingChapId, setEditingChapId] = useState<string | null>(null);
+  const [editChapForm, setEditChapForm] = useState({ name: '' });
+
+  const [editTopicOpen, setEditTopicOpen] = useState(false);
+  const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
+  const [editTopicForm, setEditTopicForm] = useState({ name: '', dateTaught: '' });
+
+  // Delete Confirmation State
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'subject'|'chapter'|'topic', id: string, name: string } | null>(null);
+
   const toggleSub = (id: string) => setExpandedSubs((e) => e.includes(id) ? e.filter((x) => x !== id) : [...e, id]);
   const toggleChap = (id: string) => setExpandedChaps((e) => e.includes(id) ? e.filter((x) => x !== id) : [...e, id]);
 
@@ -41,6 +67,42 @@ export default function Subjects() {
     addSubject.mutate({ ...subForm, startDate: new Date().toISOString() });
     setSubForm({ name: '', icon: '📘', color: '#4f8ef7' });
     setNewSubOpen(false);
+  };
+
+  const handleEditSubject = (sub: any) => {
+    setEditingSubId(sub._id);
+    setEditSubForm({ name: sub.name, icon: sub.icon || '📘', color: sub.color || '#4f8ef7' });
+    setEditSubOpen(true);
+  };
+
+  const handleEditChapter = (chap: any) => {
+    setEditingChapId(chap._id);
+    setEditChapForm({ name: chap.name });
+    setEditChapOpen(true);
+  };
+
+  const handleEditTopic = (topic: any) => {
+    setEditingTopicId(topic._id);
+    setEditTopicForm({ name: topic.name, dateTaught: topic.dateTaught?.split('T')[0] || '' });
+    setEditTopicOpen(true);
+  };
+
+  const submitEditSubject = () => {
+    if (!editingSubId || !editSubForm.name.trim()) return;
+    updateSubject.mutate({ id: editingSubId, ...editSubForm });
+    setEditSubOpen(false);
+  };
+
+  const submitEditChapter = () => {
+    if (!editingChapId || !editChapForm.name.trim()) return;
+    updateChapter.mutate({ id: editingChapId, ...editChapForm });
+    setEditChapOpen(false);
+  };
+
+  const submitEditTopic = () => {
+    if (!editingTopicId || !editTopicForm.name.trim()) return;
+    updateTopic.mutate({ id: editingTopicId, ...editTopicForm });
+    setEditTopicOpen(false);
   };
 
   const handleAddChapter = (subjectId: string, orderIndex: number) => {
@@ -61,6 +123,21 @@ export default function Subjects() {
     if (type === 'subject') updateSubject.mutate({ id, status });
     if (type === 'chapter') updateChapter.mutate({ id, status });
     if (type === 'topic') updateTopic.mutate({ id, status });
+  };
+
+  const triggerDelete = (type: 'subject'|'chapter'|'topic', id: string, name: string) => {
+    setDeleteTarget({ type, id, name });
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDeletion = () => {
+    if (!deleteTarget) return;
+    const { type, id } = deleteTarget;
+    if (type === 'subject') deleteSubject.mutate(id);
+    if (type === 'chapter') deleteChapter.mutate(id);
+    if (type === 'topic') deleteTopic.mutate(id);
+    setConfirmDeleteOpen(false);
+    setDeleteTarget(null);
   };
 
   if (isLoading) {
@@ -117,32 +194,33 @@ export default function Subjects() {
 
           return (
             <div key={sub._id} className="bg-card/50 backdrop-blur-md rounded-3xl overflow-hidden border border-primary/5 shadow-sm hover:border-primary/20 transition-all duration-300">
-              {/* Subject header */}
-              <div
-                className={`flex items-center gap-3 md:gap-5 px-4 md:px-6 py-4 md:py-6 cursor-pointer hover:bg-secondary/40 transition-colors ${isSubOpen ? 'bg-secondary/20 border-b border-primary/5' : ''}`}
-                onClick={() => toggleSub(sub._id)}
-              >
-                <div
-                  className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl shrink-0 flex items-center justify-center text-2xl md:text-3xl shadow-lg shadow-inner"
-                  style={{ background: `${sub.color}15`, color: sub.color, boxShadow: `0 8px 16px -4px ${sub.color}30` }}
-                >
+              <div className={`flex items-center gap-3 md:gap-5 px-4 md:px-6 py-4 md:py-6 cursor-pointer hover:bg-secondary/40 transition-colors group ${isSubOpen ? 'bg-secondary/20 border-b border-primary/5' : ''}`} onClick={() => toggleSub(sub._id)}>
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl shrink-0 flex items-center justify-center text-2xl md:text-3xl shadow-lg" style={{ background: `${sub.color}15`, color: sub.color, boxShadow: `0 8px 16px -4px ${sub.color}30` }}>
                   {sub.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                  <div className="flex items-center gap-3">
                     <h3 className="font-heading font-bold text-lg md:text-xl text-foreground truncate">{sub.name}</h3>
                     <DropdownMenu>
                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <button className={`w-fit text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${STATUS_COLORS[sub.status as keyof typeof STATUS_COLORS]}`}>
-                             {sub.status}
-                          </button>
+                          <button className={`w-fit text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${STATUS_COLORS[sub.status as keyof typeof STATUS_COLORS]}`}>{sub.status}</button>
                        </DropdownMenuTrigger>
-                       <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => handleStatusUpdate('subject', sub._id, 'pending')}>Pending</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusUpdate('subject', sub._id, 'ongoing')}>Ongoing</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusUpdate('subject', sub._id, 'complete')}>Complete</DropdownMenuItem>
+                       <DropdownMenuContent className="rounded-2xl border-primary/10 p-2 min-w-[160px]">
+                          <DropdownMenuItem onClick={() => handleStatusUpdate('subject', sub._id, 'pending')} className="rounded-xl font-bold py-2">Pending</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleStatusUpdate('subject', sub._id, 'ongoing')} className="rounded-xl font-bold py-2">Ongoing</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleStatusUpdate('subject', sub._id, 'complete')} className="rounded-xl font-bold py-2">Complete</DropdownMenuItem>
+                          <div className="h-px bg-muted mx-1 my-1" />
+                          <DropdownMenuItem onClick={() => triggerDelete('subject', sub._id, sub.name)} className="rounded-xl font-bold py-2 text-destructive"><Trash2 className="h-4 w-4 mr-2" /> Delete</DropdownMenuItem>
                        </DropdownMenuContent>
                     </DropdownMenu>
+                    <div className="flex items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={(e) => { e.stopPropagation(); handleEditSubject(sub); }}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); triggerDelete('subject', sub._id, sub.name); }}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 md:gap-3 mt-1 md:mt-1.5">
                     <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{sub.chapters.length} chapters</span>
@@ -160,16 +238,13 @@ export default function Subjects() {
                   <ChevronDown className="h-4 w-4 md:h-5 md:w-5" />
                 </div>
               </div>
-
               {isSubOpen && (
                 <div className="divide-y divide-primary/5 bg-background/20">
-                  {sub.chapters.map((chap: any, ci: number) => {
+                  {sub.chapters.map((chap: any) => {
                     const isChapOpen = expandedChaps.includes(chap._id);
                     const chapDone = chap.topics.filter((t: any) => t.status === 'complete').length;
-
                     return (
                       <div key={chap._id} className="relative transition-colors group/chap">
-                        {/* Chapter header */}
                         <div className="flex items-center gap-3 md:gap-4 px-4 md:px-6 py-3 md:py-4 cursor-pointer hover:bg-secondary/30 transition-colors" onClick={() => toggleChap(chap._id)}>
                           <div className={`p-1.5 rounded-lg transition-colors shrink-0 ${isChapOpen ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'}`}>
                             {isChapOpen ? <ChevronDown className="h-3.5 w-3.5 md:h-4 md:w-4" /> : <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4" />}
@@ -179,9 +254,7 @@ export default function Subjects() {
                               <p className="text-xs md:text-sm font-bold text-foreground group-hover/chap:text-primary transition-colors truncate">{chap.name}</p>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                  <button className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${STATUS_COLORS[chap.status as keyof typeof STATUS_COLORS]}`}>
-                                    {chap.status}
-                                  </button>
+                                  <button className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${STATUS_COLORS[chap.status as keyof typeof STATUS_COLORS]}`}>{chap.status}</button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
                                   <DropdownMenuItem onClick={() => handleStatusUpdate('chapter', chap._id, 'pending')}>Pending</DropdownMenuItem>
@@ -192,17 +265,15 @@ export default function Subjects() {
                             </div>
                             <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-wider opacity-60">{chapDone}/{chap.topics.length} topics</p>
                           </div>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 sm:opacity-0 group-hover/chap:opacity-100 transition-opacity shrink-0"
-                            onClick={(e) => { e.stopPropagation(); deleteChapter.mutate(chap._id); }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1 sm:opacity-0 group-hover/chap:opacity-100 transition-opacity shrink-0">
+                            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={(e) => { e.stopPropagation(); handleEditChapter(chap); }}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); triggerDelete('chapter', chap._id, chap.name); }}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
-
-                        {/* Topics */}
                         {isChapOpen && (
                           <div className="bg-secondary/10 pb-4">
                             <div className="mx-3 md:mx-6 p-1 bg-background/40 border border-primary/5 rounded-2xl space-y-1">
@@ -211,13 +282,7 @@ export default function Subjects() {
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <button className="shrink-0 transition-transform group-hover/topic:scale-110">
-                                        {topic.status === 'complete' ? (
-                                          <CheckCircle2 className="h-4.5 w-4.5 md:h-5 md:w-5 text-success" />
-                                        ) : topic.status === 'ongoing' ? (
-                                          <div className="h-4.5 w-4.5 md:h-5 md:w-5 rounded-full border-2 border-primary bg-primary/20 animate-pulse" />
-                                        ) : (
-                                          <div className="h-4.5 w-4.5 md:h-5 md:w-5 rounded-full border-2 border-primary/20 group-hover/topic:border-primary/40" />
-                                        )}
+                                        {topic.status === 'complete' ? <CheckCircle2 className="h-4.5 w-4.5 md:h-5 md:w-5 text-success" /> : topic.status === 'ongoing' ? <div className="h-4.5 w-4.5 md:h-5 md:w-5 rounded-full border-2 border-primary bg-primary/20 animate-pulse" /> : <div className="h-4.5 w-4.5 md:h-5 md:w-5 rounded-full border-2 border-primary/20 group-hover/topic:border-primary/40" />}
                                       </button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent>
@@ -227,34 +292,22 @@ export default function Subjects() {
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                   <div className="flex-1 min-w-0">
-                                    <p className={`text-xs md:text-sm font-semibold truncate ${topic.status === 'complete' ? 'text-muted-foreground line-through font-normal' : 'text-foreground'}`}>
-                                      {topic.name}
-                                    </p>
+                                    <p className={`text-xs md:text-sm font-semibold truncate ${topic.status === 'complete' ? 'text-muted-foreground line-through font-normal' : 'text-foreground'}`}>{topic.name}</p>
                                     <div className="flex items-center gap-2">
-                                      {topic.revisions?.map((r: any) => (
-                                        <span key={r.id} className={`text-[7px] md:text-[8px] font-mono px-1.5 py-0.5 rounded ${r.status === 'complete' ? 'bg-accent/20 text-accent font-bold' : 'bg-secondary text-muted-foreground/40'}`}>
-                                          R{r.revisionNumber}
-                                        </span>
-                                      ))}
-                                      {topic.dateTaught && (
-                                        <span className="text-[8px] md:text-[9px] font-bold text-muted-foreground opacity-50 ml-auto shrink-0">
-                                          {new Date(topic.dateTaught).toLocaleDateString()}
-                                        </span>
-                                      )}
+                                      {topic.revisions?.map((r: any) => <span key={r.id} className={`text-[7px] md:text-[8px] font-mono px-1.5 py-0.5 rounded ${r.status === 'complete' ? 'bg-accent/20 text-accent font-bold' : 'bg-secondary text-muted-foreground/40'}`}>R{r.revisionNumber}</span>)}
+                                      {topic.dateTaught && <span className="text-[8px] md:text-[9px] font-bold text-muted-foreground opacity-50 ml-auto shrink-0">{new Date(topic.dateTaught).toLocaleDateString()}</span>}
                                     </div>
                                   </div>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 md:h-8 md:w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 sm:opacity-0 group-hover/topic:opacity-100 transition-opacity shrink-0"
-                                    onClick={() => deleteTopic.mutate(topic._id)}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
+                                  <div className="flex items-center gap-1 sm:opacity-0 group-hover/topic:opacity-100 transition-opacity shrink-0">
+                                    <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => handleEditTopic(topic)}>
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => triggerDelete('topic', topic._id, topic.name)}>
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
                                 </div>
                               ))}
-
-                              {/* Add topic */}
                               {newTopicFor === chap._id ? (
                                 <div className="p-4 rounded-xl bg-background/60 border border-primary/10 m-1 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-300">
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -283,8 +336,6 @@ export default function Subjects() {
                       </div>
                     );
                   })}
-
-                  {/* Add chapter */}
                   {newChapFor === sub._id ? (
                     <div className="p-6 bg-secondary/20 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-300 border-t border-primary/5">
                       <div className="space-y-1.5 max-w-md">
@@ -297,25 +348,73 @@ export default function Subjects() {
                       </div>
                     </div>
                   ) : (
-                    <button onClick={() => setNewChapFor(sub._id)} className="w-full py-4 text-xs font-bold text-muted-foreground hover:text-primary hover:bg-secondary/40 transition-all flex items-center justify-center gap-2 uppercase tracking-widest bg-secondary/10">
-                      <Plus className="h-4 w-4" /> Add new chapter
-                    </button>
+                    <button onClick={() => setNewChapFor(sub._id)} className="w-full py-4 text-xs font-bold text-muted-foreground hover:text-primary hover:bg-secondary/40 transition-all flex items-center justify-center gap-2 uppercase tracking-widest bg-secondary/10"><Plus className="h-4 w-4" /> Add new chapter</button>
                   )}
                 </div>
               )}
             </div>
           );
         })}
-
-        {subjects?.length === 0 && (
-          <div className="text-center py-20 bg-card/30 rounded-3xl border border-dashed border-primary/20">
-            <div className="w-24 h-24 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-6 text-5xl">📚</div>
-            <h3 className="font-heading text-2xl font-bold text-foreground">Welcome to GATE Tracker</h3>
-            <p className="text-muted-foreground mt-2 max-w-sm mx-auto font-medium">Create your first subject to start organizing your study material and tracking progress.</p>
-            <Button size="lg" className="mt-8 rounded-2xl px-10 h-12 font-bold shadow-xl shadow-primary/20" onClick={() => setNewSubOpen(true)}>Get Started</Button>
-          </div>
-        )}
       </div>
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent className="rounded-[2.5rem] border-primary/10 p-10 max-w-lg">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-5 mb-6">
+              <div className="w-14 h-14 bg-destructive/10 rounded-2xl flex items-center justify-center shrink-0">
+                <AlertTriangle className="h-7 w-7 text-destructive" />
+              </div>
+              <AlertDialogTitle className="font-heading text-2xl md:text-3xl font-black text-left leading-tight">
+                {deleteTarget?.type === 'subject' && 'Purge Subject?'}
+                {deleteTarget?.type === 'chapter' && 'Remove Chapter?'}
+                {deleteTarget?.type === 'topic' && 'Delete Topic?'}
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-base text-muted-foreground pt-1 leading-relaxed text-left">
+              You are about to delete <span className="text-foreground font-bold">"{deleteTarget?.name}"</span>. This action is permanent.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8 flex flex-col sm:flex-row gap-4">
+            <AlertDialogCancel className="h-14 flex-1 rounded-2xl font-black uppercase tracking-widest text-[11px] border-primary/5">Wait, Abort</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeletion} className="h-14 flex-1 rounded-2xl font-black uppercase tracking-widest text-[11px] bg-destructive text-white hover:bg-destructive/90 shadow-xl shadow-destructive/20">Yes, Delete Permanent</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={editSubOpen} onOpenChange={setEditSubOpen}>
+        <DialogContent className="rounded-3xl border-primary/10 shadow-2xl max-w-lg">
+          <DialogHeader><DialogTitle className="font-heading text-2xl font-bold">Edit Subject</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div><Label className="font-bold text-xs uppercase text-muted-foreground">Subject Name</Label><Input className="h-12 rounded-xl mt-1.5" value={editSubForm.name} onChange={(e) => setEditSubForm({ ...editSubForm, name: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label className="font-bold text-xs uppercase text-muted-foreground">Icon</Label><Input className="h-12 rounded-xl mt-1.5 text-center text-2xl" value={editSubForm.icon} onChange={(e) => setEditSubForm({ ...editSubForm, icon: e.target.value })} /></div>
+              <div><Label className="font-bold text-xs uppercase text-muted-foreground">Accent Color</Label><Input type="color" value={editSubForm.color} onChange={(e) => setEditSubForm({ ...editSubForm, color: e.target.value })} className="h-12 rounded-xl mt-1.5 p-1 cursor-pointer" /></div>
+            </div>
+            <Button onClick={submitEditSubject} className="w-full h-12 rounded-xl font-bold">Save Changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editChapOpen} onOpenChange={setEditChapOpen}>
+        <DialogContent className="rounded-3xl border-primary/10 shadow-2xl max-w-lg">
+          <DialogHeader><DialogTitle className="font-heading text-2xl font-bold">Edit Chapter</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div><Label className="font-bold text-xs uppercase text-muted-foreground">Chapter Name</Label><Input className="h-12 rounded-xl mt-1.5 font-bold" value={editChapForm.name} onChange={(e) => setEditChapForm({ ...editChapForm, name: e.target.value })} /></div>
+            <Button onClick={submitEditChapter} className="w-full h-12 rounded-xl font-bold">Save Changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editTopicOpen} onOpenChange={setEditTopicOpen}>
+        <DialogContent className="rounded-3xl border-primary/10 shadow-2xl max-w-lg">
+          <DialogHeader><DialogTitle className="font-heading text-2xl font-bold">Edit Topic</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div><Label className="font-bold text-xs uppercase text-muted-foreground">Topic Title</Label><Input className="h-12 rounded-xl mt-1.5 font-bold" value={editTopicForm.name} onChange={(e) => setEditTopicForm({ ...editTopicForm, name: e.target.value })} /></div>
+            <div><Label className="font-bold text-xs uppercase text-muted-foreground">Date Taught</Label><Input type="date" className="h-12 rounded-xl mt-1.5 font-bold" value={editTopicForm.dateTaught} onChange={(e) => setEditTopicForm({ ...editTopicForm, dateTaught: e.target.value })} /></div>
+            <Button onClick={submitEditTopic} className="w-full h-12 rounded-xl font-bold">Save Changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

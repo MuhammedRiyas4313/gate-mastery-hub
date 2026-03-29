@@ -70,6 +70,13 @@ export function useSubjects() {
     },
   });
 
+  const removeSubject = useMutation({
+    mutationFn: async (id: string) => api.delete(`/subjects/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+    },
+  });
+
   return {
     ...query,
     addSubject,
@@ -80,6 +87,7 @@ export function useSubjects() {
     updateTopic,
     deleteChapter: removeChapter,
     deleteTopic: removeTopic,
+    deleteSubject: removeSubject,
   };
 }
 
