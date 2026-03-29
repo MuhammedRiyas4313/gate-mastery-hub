@@ -12,7 +12,6 @@ import PYQ from "./pages/PYQ";
 import Quizzes from "./pages/Quizzes";
 import DPPs from "./pages/DPPs";
 import TestSeries from "./pages/TestSeries";
-import Analytics from "./pages/Analytics";
 import Exams from "./pages/Exams";
 import Timer from "./pages/Timer";
 import Schedules from "./pages/Schedules";
@@ -49,7 +48,6 @@ const App = () => {
                 <Route path="/quizzes" element={<Quizzes />} />
                 <Route path="/dpp" element={<DPPs />} />
                 <Route path="/test-series" element={<TestSeries />} />
-                <Route path="/analytics" element={<Analytics />} />
                 <Route path="/exams" element={<Exams />} />
                 <Route path="/timer" element={<Timer />} />
                 <Route path="/schedules" element={<Schedules />} />

@@ -23,7 +23,6 @@ const items = [
   { title: "DPP", url: "/dpp", icon: ClipboardList },
   { title: "Test Series", url: "/test-series", icon: Trophy },
   { title: "Institute Logs", url: "/schedules", icon: FileText },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
 
 import { SidebarFooter } from "@/components/ui/sidebar";
