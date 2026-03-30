@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import {
     Play,
     Pause,
@@ -144,7 +144,7 @@ const DonutChartCard = ({ title, stats, icon: Icon }: any) => {
     );
 };
 
-const IntegratedTimer = ({ seconds, isActive, isPaused, handleStart, handlePause, handleResume, handleStop, handleReset, selectedSubject, setSelectedSubject, selectedChapter, setSelectedChapter, routeSubjects, routeChapters, chaptersLoading }: any) => {
+const IntegratedTimer = ({ seconds, isActive, isPaused, isStopping, handleStart, handlePause, handleResume, handleStop, handleReset, selectedSubject, setSelectedSubject, selectedChapter, setSelectedChapter, routeSubjects, routeChapters, chaptersLoading }: any) => {
     return (
         <div className="bg-primary text-primary-foreground rounded-[3rem] shadow-3xl relative overflow-hidden flex flex-col border border-primary/10">
              {/* ── TOP SECTION: TIMER DISPLAY (CENTERED STACK) ────────────────── */}
@@ -188,9 +188,10 @@ const IntegratedTimer = ({ seconds, isActive, isPaused, handleStart, handlePause
                                 
                                 <Button 
                                     onClick={handleStop} 
-                                    className="bg-rose-500 text-white hover:bg-rose-600 font-black rounded-2xl px-10 py-6 h-auto shadow-xl shadow-rose-500/30 active:scale-95 transition-all text-xs tracking-[0.2em] min-w-[200px] border-none"
+                                    disabled={isStopping}
+                                    className="bg-rose-500 text-white hover:bg-rose-600 font-black rounded-2xl px-10 py-6 h-auto shadow-xl shadow-rose-500/30 active:scale-95 transition-all text-xs tracking-[0.2em] min-w-[200px] border-none disabled:opacity-50 disabled:active:scale-100"
                                 >
-                                    <CheckCircle2 className="h-5 w-5 mr-2" /> STOP SESSION
+                                    <CheckCircle2 className="h-5 w-5 mr-2" /> {isStopping ? 'SAVING...' : 'STOP SESSION'}
                                 </Button>
                                 <Button 
                                     onClick={handleReset} 
@@ -501,30 +502,40 @@ export default function TimerPage() {
         setSeconds(0); 
     };
 
-    const handleStop = async () => {
-        if (seconds < 10) { toast.error('Session too short to record.'); handleReset(); return; }
-        try {
-            const startTime = activeTimer?.startTime ? new Date(activeTimer.startTime) : new Date();
-            await api.post('/timer/session', {
-                subjectId: activeTimer?.subjectId || undefined,
-                chapterId: activeTimer?.chapterId || undefined,
-                duration: seconds,
-                startTime: startTime,
-                endTime: new Date(),
-            });
-
+    const saveSessionMutation = useMutation({
+        mutationFn: async (sessionData: any) => {
+            return api.post('/timer/session', sessionData);
+        },
+        onSuccess: async (_, variables) => {
             // Refetch needed data
             await Promise.all([
                 queryClient.invalidateQueries({ queryKey: ['subjects'] }),
                 queryClient.invalidateQueries({ queryKey: ['timerStats'] }),
-                activeTimer?.subjectId ? queryClient.invalidateQueries({ queryKey: ['chapters', activeTimer.subjectId] }) : Promise.resolve()
+                variables.subjectId ? queryClient.invalidateQueries({ queryKey: ['chapters', variables.subjectId] }) : Promise.resolve()
             ]);
 
             toast.success('Study session recorded!');
             // Reset selectedDate so it will auto-select the latest date from fresh stats
             setSelectedDate(''); 
             handleReset();
-        } catch { toast.error('Failed to save session.'); }
+        },
+        onError: () => {
+             toast.error('Failed to save session.'); 
+        }
+    });
+
+    const handleStop = () => {
+        if (seconds < 10) { toast.error('Session too short to record.'); handleReset(); return; }
+        if (saveSessionMutation.isPending) return;
+
+        const startTime = activeTimer?.startTime ? new Date(activeTimer.startTime) : new Date();
+        saveSessionMutation.mutate({
+            subjectId: activeTimer?.subjectId || undefined,
+            chapterId: activeTimer?.chapterId || undefined,
+            duration: seconds,
+            startTime: startTime,
+            endTime: new Date(),
+        });
     };
 
     const activeSubject = (routeSubjects as any[])?.find((s: any) => s._id === (activeTimer?.subjectId || selectedSubject));
@@ -541,6 +552,7 @@ export default function TimerPage() {
                         seconds={seconds}
                         isActive={isActive}
                         isPaused={activeTimer?.isPaused}
+                        isStopping={saveSessionMutation.isPending}
                         handleStart={handleStart}
                         handlePause={pauseGlobalTimer}
                         handleResume={resumeGlobalTimer}
