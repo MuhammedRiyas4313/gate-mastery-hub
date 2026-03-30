@@ -112,7 +112,14 @@ interface StoreState {
   gateExamDate: string;
   streak: number;
   lastActiveDate: string;
-  activeTimer: { startTime: string; subjectId?: string; chapterId?: string } | null;
+  activeTimer: { 
+    startTime: string; 
+    subjectId?: string; 
+    chapterId?: string;
+    isPaused: boolean;
+    accumulatedTime: number; 
+    lastStartedTime: string;
+  } | null;
 
   // Subject CRUD
   addSubject: (s: Omit<Subject, 'id'>) => void;
@@ -159,6 +166,8 @@ interface StoreState {
 
   // Timer
   startTimer: (subjectId?: string, chapterId?: string) => void;
+  pauseTimer: () => void;
+  resumeTimer: () => void;
   stopTimer: () => void;
 }
 
@@ -336,12 +345,41 @@ export const useStore = create<StoreState>()(
       setGateExamDate: (date) => set({ gateExamDate: date }),
 
       // ── Timer ──
-      startTimer: (subjectId, chapterId) => set({
-        activeTimer: {
-          startTime: new Date().toISOString(),
-          subjectId,
-          chapterId,
-        }
+      startTimer: (subjectId, chapterId) => {
+        const now = new Date().toISOString();
+        set({
+          activeTimer: {
+            startTime: now,
+            lastStartedTime: now,
+            subjectId,
+            chapterId,
+            isPaused: false,
+            accumulatedTime: 0,
+          }
+        });
+      },
+      pauseTimer: () => set((state) => {
+        if (!state.activeTimer || state.activeTimer.isPaused) return state;
+        const now = new Date().getTime();
+        const lastStarted = new Date(state.activeTimer.lastStartedTime).getTime();
+        const extra = now - lastStarted;
+        return {
+          activeTimer: {
+            ...state.activeTimer,
+            isPaused: true,
+            accumulatedTime: state.activeTimer.accumulatedTime + extra,
+          }
+        };
+      }),
+      resumeTimer: () => set((state) => {
+        if (!state.activeTimer || !state.activeTimer.isPaused) return state;
+        return {
+          activeTimer: {
+            ...state.activeTimer,
+            isPaused: false,
+            lastStartedTime: new Date().toISOString(),
+          }
+        };
       }),
       stopTimer: () => set({ activeTimer: null }),
     }),

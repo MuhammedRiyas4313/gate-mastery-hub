@@ -144,14 +144,19 @@ const DonutChartCard = ({ title, stats, icon: Icon }: any) => {
     );
 };
 
-const IntegratedTimer = ({ seconds, isActive, handleStart, handleStop, handleReset, selectedSubject, setSelectedSubject, selectedChapter, setSelectedChapter, routeSubjects, routeChapters, chaptersLoading }: any) => {
+const IntegratedTimer = ({ seconds, isActive, isPaused, handleStart, handlePause, handleResume, handleStop, handleReset, selectedSubject, setSelectedSubject, selectedChapter, setSelectedChapter, routeSubjects, routeChapters, chaptersLoading }: any) => {
     return (
         <div className="bg-primary text-primary-foreground rounded-[3rem] shadow-3xl relative overflow-hidden flex flex-col border border-primary/10">
              {/* ── TOP SECTION: TIMER DISPLAY (CENTERED STACK) ────────────────── */}
              <div className="p-8 sm:p-10 relative z-10 flex flex-col items-center text-center">
-                 <span className="text-[10px] font-black uppercase tracking-[0.6em] opacity-40 mb-4 block">Active Session Time</span>
+                 <div className="flex items-center gap-2 mb-4">
+                    <span className="text-[10px] font-black uppercase tracking-[0.6em] opacity-40 block">Active Session Time</span>
+                    {isPaused && (
+                        <span className="bg-amber-500/20 text-amber-500 text-[8px] font-black px-2 py-0.5 rounded-full animate-pulse border border-amber-500/20">PAUSED</span>
+                    )}
+                 </div>
                  
-                 <h2 className="font-mono text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter tabular-nums leading-none mb-8">
+                 <h2 className="font-mono text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter tabular-nums leading-none mb-8 text-white">
                     {formatTime(seconds)}
                  </h2>
 
@@ -164,21 +169,37 @@ const IntegratedTimer = ({ seconds, isActive, handleStart, handleStop, handleRes
                             <Play className="h-5 w-5 fill-current mr-2" /> START FOCUS
                         </Button>
                     ) : (
-                        <div className="flex flex-wrap items-center justify-center gap-3 w-full">
-                             <Button 
-                                onClick={handleStop} 
-                                className="bg-red-500 text-white hover:bg-red-600 font-black rounded-2xl px-10 py-6 h-auto shadow-xl shadow-red-500/30 active:scale-95 transition-all text-xs tracking-[0.2em] min-w-[200px] border-none"
-                            >
-                                <CheckCircle2 className="h-5 w-5 mr-2" /> STOP SESSION
-                            </Button>
-                            <Button 
-                                onClick={handleReset} 
-                                variant="outline" 
-                                className="h-12 bg-white/10 hover:bg-white/20 border-white/20 rounded-2xl text-white font-black tracking-widest text-[10px] px-8"
-                            >
-                                <RotateCcw className="h-4 w-4 mr-2" /> RESET
-                            </Button>
-                        </div>
+                             <div className="flex flex-wrap items-center justify-center gap-3 w-full">
+                                {isPaused ? (
+                                    <Button 
+                                        onClick={handleResume} 
+                                        className="bg-emerald-500 text-white hover:bg-emerald-600 font-black rounded-2xl px-10 py-6 h-auto shadow-xl shadow-emerald-500/30 active:scale-95 transition-all text-xs tracking-[0.3em] min-w-[200px] border-none"
+                                    >
+                                        <Play className="h-5 w-5 fill-current mr-2" /> RESUME
+                                    </Button>
+                                ) : (
+                                    <Button 
+                                        onClick={handlePause} 
+                                        className="bg-amber-500 text-white hover:bg-amber-600 font-black rounded-2xl px-10 py-6 h-auto shadow-xl shadow-amber-500/30 active:scale-95 transition-all text-xs tracking-[0.3em] min-w-[200px] border-none"
+                                    >
+                                        <Pause className="h-5 w-5 fill-current mr-2" /> PAUSE
+                                    </Button>
+                                )}
+                                
+                                <Button 
+                                    onClick={handleStop} 
+                                    className="bg-rose-500 text-white hover:bg-rose-600 font-black rounded-2xl px-10 py-6 h-auto shadow-xl shadow-rose-500/30 active:scale-95 transition-all text-xs tracking-[0.2em] min-w-[200px] border-none"
+                                >
+                                    <CheckCircle2 className="h-5 w-5 mr-2" /> STOP SESSION
+                                </Button>
+                                <Button 
+                                    onClick={handleReset} 
+                                    variant="outline" 
+                                    className="h-12 bg-white/10 hover:bg-white/20 border-white/20 rounded-2xl text-white font-black tracking-widest text-[10px] px-8"
+                                >
+                                    <RotateCcw className="h-4 w-4 mr-2" /> RESET
+                                </Button>
+                             </div>
                     )}
                  </div>
                  
@@ -407,6 +428,8 @@ import { useStore } from '@/store/useStore';
 export default function TimerPage() {
     const activeTimer = useStore(state => state.activeTimer);
     const startGlobalTimer = useStore(state => state.startTimer);
+    const pauseGlobalTimer = useStore(state => state.pauseTimer);
+    const resumeGlobalTimer = useStore(state => state.resumeTimer);
     const stopGlobalTimer = useStore(state => state.stopTimer);
 
     const [seconds, setSeconds] = useState(0);
@@ -454,9 +477,14 @@ export default function TimerPage() {
         }
 
         const update = () => {
-          const start = new Date(activeTimer.startTime).getTime();
+          const accumulated = activeTimer.accumulatedTime || 0;
+          if (activeTimer.isPaused) {
+            setSeconds(Math.floor(accumulated / 1000));
+            return;
+          }
+          const lastStarted = new Date(activeTimer.lastStartedTime).getTime();
           const now = Date.now();
-          setSeconds(Math.floor((now - start) / 1000));
+          setSeconds(Math.floor((accumulated + (now - lastStarted)) / 1000));
         };
 
         update();
@@ -512,7 +540,10 @@ export default function TimerPage() {
                     <IntegratedTimer 
                         seconds={seconds}
                         isActive={isActive}
+                        isPaused={activeTimer?.isPaused}
                         handleStart={handleStart}
+                        handlePause={pauseGlobalTimer}
+                        handleResume={resumeGlobalTimer}
                         handleStop={handleStop}
                         handleReset={handleReset}
                         selectedSubject={selectedSubject}

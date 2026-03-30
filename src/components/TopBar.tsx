@@ -1,4 +1,4 @@
-import { Calendar, Zap, Loader2, Clock } from "lucide-react";
+import { Calendar, Zap, Loader2, Clock, Pause } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useStore } from "@/store/useStore";
@@ -20,9 +20,14 @@ export function TopBar() {
     if (!activeTimer) return;
     
     const update = () => {
-      const start = new Date(activeTimer.startTime).getTime();
+      const accumulated = activeTimer.accumulatedTime || 0;
+      if (activeTimer.isPaused) {
+        setActiveSeconds(Math.floor(accumulated / 1000));
+        return;
+      }
+      const lastStarted = new Date(activeTimer.lastStartedTime).getTime();
       const now = Date.now();
-      setActiveSeconds(Math.floor((now - start) / 1000));
+      setActiveSeconds(Math.floor((accumulated + (now - lastStarted)) / 1000));
     };
 
     update();
@@ -65,10 +70,16 @@ export function TopBar() {
                 title="Module Timer"
             >
                 <div className="relative">
-                  <Clock className={`h-5 w-5 ${location.pathname === '/timer' ? 'fill-current' : ''}`} />
+                  {activeTimer?.isPaused ? (
+                    <Pause className="h-5 w-5 fill-current" />
+                  ) : (
+                    <Clock className={`h-5 w-5 ${location.pathname === '/timer' ? 'fill-current' : ''}`} />
+                  )}
                   {activeTimer && (
                     <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      {!activeTimer.isPaused && (
+                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      )}
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                     </span>
                   )}
