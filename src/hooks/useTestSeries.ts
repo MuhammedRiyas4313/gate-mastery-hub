@@ -6,21 +6,23 @@ interface TestSeriesFilters {
   subjectId?: string;
   chapterId?: string;
   type?: string;
+  sortBy?: string;
 }
 
 export function useTestSeries(filters: TestSeriesFilters = {}) {
   const queryClient = useQueryClient();
 
-  const { status, subjectId, chapterId, type } = filters;
+  const { status, subjectId, chapterId, type, sortBy } = filters;
 
   const query = useQuery({
-    queryKey: ['testSeries', { status, subjectId, chapterId, type }],
+    queryKey: ['testSeries', { status, subjectId, chapterId, type, sortBy }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (status && status !== 'all') params.set('status', status);
       if (subjectId && subjectId !== 'all') params.set('subjectId', subjectId);
       if (chapterId && chapterId !== 'all') params.set('chapterId', chapterId);
       if (type && type !== 'all') params.set('type', type);
+      if (sortBy) params.set('sortBy', sortBy);
       const qs = params.toString();
       const { data } = await api.get(`/test-series${qs ? `?${qs}` : ''}`);
       return data;

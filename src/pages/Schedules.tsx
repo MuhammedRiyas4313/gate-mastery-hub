@@ -74,12 +74,37 @@ export default function Schedules() {
     }
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6 md:space-y-10 animate-in fade-in duration-700 pb-20 px-4 md:px-0">
-            {/* Header Action */}
+        <div className="max-w-6xl mx-auto space-y-4 md:space-y-6 animate-in fade-in duration-700 pb-20 px-4 md:px-0">
+            {/* Header Action Row */}
             {!isUploadMode && (
-                <div className="flex justify-end">
-                    <Button onClick={() => setIsUploadMode(true)} className="h-12 px-8 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-all">
-                        <Plus className="w-4 h-4 mr-2" /> Upload Schedule
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2 border-b border-primary/5 mb-2">
+                    <div className="flex-1">
+                        {selectedSchedule && (
+                            <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 animate-in slide-in-from-left-4 duration-500">
+                                <div className="flex items-center gap-3">
+                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${getStatusStyles(selectedSchedule.status || 'Upcoming')}`}>
+                                        {selectedSchedule.status || 'Upcoming'}
+                                    </span>
+                                    <h2 className="text-sm md:text-lg font-heading font-black leading-tight text-foreground">{selectedSchedule.title}</h2>
+                                </div>
+                                <div className="h-3 w-[1px] bg-primary/20 hidden lg:block"></div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground/80 flex items-center gap-2">
+                                    <Calendar className="w-3.5 h-3.5 text-primary/60" /> 
+                                    {new Date(selectedSchedule.startDate).toLocaleDateString()} — {new Date(selectedSchedule.endDate).toLocaleDateString()}
+                                </p>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    className="rounded-lg h-7 w-7 p-0 text-muted-foreground hover:text-foreground shrink-0 border border-primary/5 bg-card/30 ml-2"
+                                    onClick={() => setSelectedSchedule(null)}
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                    <Button onClick={() => setIsUploadMode(true)} className="h-10 px-6 rounded-xl bg-primary text-primary-foreground font-black uppercase tracking-widest text-[10px] shadow-lg active:scale-95 transition-all shrink-0">
+                        <Plus className="w-3.5 h-3.5 mr-2" /> Upload Schedule
                     </Button>
                 </div>
             )}
@@ -221,59 +246,9 @@ export default function Schedules() {
                     )}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-[30%_70%] gap-6 items-start animate-in fade-in duration-500">
-                    {/* Left Column - List View */}
-                    <div className="flex flex-col gap-3 max-h-[85vh] overflow-y-auto pr-2 pb-10 custom-scrollbar">
-                        <div className="sticky top-0 bg-background/95 backdrop-blur-xl z-10 py-2 mb-2 flex items-center justify-between border-b border-primary/5">
-                            <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">All Schedules</span>
-                        </div>
-                        {[...(schedules || [])].reverse().map((schedule) => (
-                            <div 
-                                key={schedule._id} 
-                                onClick={() => setSelectedSchedule(schedule)}
-                                className={cn(
-                                    "rounded-3xl border p-5 cursor-pointer transition-all duration-300 text-left",
-                                    selectedSchedule._id === schedule._id 
-                                        ? "bg-card border-primary ring-4 ring-primary/10 shadow-xl" 
-                                        : "bg-card/40 backdrop-blur-md border-primary/5 hover:border-primary/50 shadow-sm"
-                                )}
-                            >
-                                <div className="flex justify-between items-start mb-3">
-                                    <h3 className="text-sm font-heading font-black leading-tight line-clamp-2 pr-2">{schedule.title}</h3>
-                                    <span className={`px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border shrink-0 ${getStatusStyles(schedule.status || 'Upcoming')}`}>
-                                        {schedule.status || 'Upcoming'}
-                                    </span>
-                                </div>
-                                <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60 flex items-center gap-1.5">
-                                    <Calendar className="w-3 h-3" /> 
-                                    {new Date(schedule.startDate).toLocaleDateString()} — {new Date(schedule.endDate).toLocaleDateString()}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Right Column - Detail Viewer */}
-                    <div className="bg-card backdrop-blur-md rounded-[2.5rem] border border-primary/10 p-6 md:p-8 flex flex-col gap-6 shadow-2xl sticky top-6">
-                        <div className="flex justify-between items-start">
-                            <div className="space-y-3">
-                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border inline-block ${getStatusStyles(selectedSchedule.status || 'Upcoming')}`}>
-                                    {selectedSchedule.status || 'Upcoming'}
-                                </span>
-                                <h2 className="text-2xl md:text-3xl font-heading font-black leading-tight pr-4">{selectedSchedule.title}</h2>
-                                <p className="text-xs font-black uppercase tracking-widest text-muted-foreground/80 flex items-center gap-2">
-                                    <Calendar className="w-4 h-4" /> 
-                                    {new Date(selectedSchedule.startDate).toLocaleDateString()} — {new Date(selectedSchedule.endDate).toLocaleDateString()}
-                                </p>
-                            </div>
-                            <Button 
-                                variant="outline" 
-                                className="rounded-full h-12 w-12 p-0 text-muted-foreground hover:text-foreground shrink-0 border-primary/10 bg-background/50 hover:bg-muted/80 transition-all"
-                                onClick={() => setSelectedSchedule(null)}
-                            >
-                                <X className="w-5 h-5" />
-                            </Button>
-                        </div>
-
+                <div className="grid grid-cols-1 lg:grid-cols-[70%_30%] gap-6 items-start animate-in fade-in duration-500">
+                    {/* Left Column - Detail Viewer */}
+                    <div className="bg-card backdrop-blur-md rounded-[2rem] border border-primary/10 p-4 md:p-5 flex flex-col gap-4 shadow-2xl sticky top-6">
                         {/* File Viewer Box */}
                         <div className="w-full bg-[#0a0a0a] rounded-3xl border border-primary/10 overflow-hidden flex flex-col items-center justify-center min-h-[400px] h-[58vh] relative group">
                              {(() => {
@@ -320,6 +295,36 @@ export default function Schedules() {
                                 <Download className="w-4 h-4" /> Download Raw File
                              </a>
                         </div>
+                    </div>
+
+                    {/* Right Column - List View */}
+                    <div className="flex flex-col gap-3 max-h-[85vh] overflow-y-auto pr-2 pb-10 custom-scrollbar">
+                        <div className="sticky top-0 bg-background/95 backdrop-blur-xl z-10 py-2 mb-2 flex items-center justify-between border-b border-primary/5">
+                            <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">All Schedules</span>
+                        </div>
+                        {[...(schedules || [])].reverse().map((schedule) => (
+                            <div 
+                                key={schedule._id} 
+                                onClick={() => setSelectedSchedule(schedule)}
+                                className={cn(
+                                    "rounded-3xl border p-5 cursor-pointer transition-all duration-300 text-left",
+                                    selectedSchedule._id === schedule._id 
+                                        ? "bg-card border-primary ring-4 ring-primary/10 shadow-xl" 
+                                        : "bg-card/40 backdrop-blur-md border-primary/5 hover:border-primary/50 shadow-sm"
+                                )}
+                            >
+                                <div className="flex justify-between items-start mb-3">
+                                    <h3 className="text-sm font-heading font-black leading-tight line-clamp-2 pr-2">{schedule.title}</h3>
+                                    <span className={`px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border shrink-0 ${getStatusStyles(schedule.status || 'Upcoming')}`}>
+                                        {schedule.status || 'Upcoming'}
+                                    </span>
+                                </div>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60 flex items-center gap-1.5">
+                                    <Calendar className="w-3 h-3" /> 
+                                    {new Date(schedule.startDate).toLocaleDateString()} — {new Date(schedule.endDate).toLocaleDateString()}
+                                </p>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}

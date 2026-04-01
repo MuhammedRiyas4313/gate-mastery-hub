@@ -18,11 +18,13 @@ export default function Revision() {
   const [filterStatus, setFilterStatus] = useState('PENDING');
   const [filterSubject, setFilterSubject] = useState('all');
   const [filterChapter, setFilterChapter] = useState('all');
+  const [sortBy, setSortBy] = useState('date');
 
   const { data: revisions, isLoading, updateRevision, deleteRevision } = useRevisions({
     status: filterStatus,
     subjectId: filterSubject,
     chapterId: filterChapter,
+    sortBy: sortBy,
   });
   const { data: subjects } = useSubjects();
 
@@ -145,8 +147,8 @@ export default function Revision() {
   // Status pill helper
   const statusStyle = (s: string) =>
     s === 'COMPLETED' ? 'bg-success/10 text-success border-success/20' :
-    s === 'ONGOING'   ? 'bg-warning/10 text-warning animate-pulse border-warning/20' :
-                        'bg-background border-primary/10 text-muted-foreground hover:border-primary/30 hover:text-foreground';
+      s === 'ONGOING' ? 'bg-warning/10 text-warning animate-pulse border-warning/20' :
+        'bg-background border-primary/10 text-muted-foreground hover:border-primary/30 hover:text-foreground';
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-500 pb-20 px-4 md:px-0">
@@ -200,6 +202,18 @@ export default function Revision() {
               </SelectContent>
             </Select>
           )}
+
+          {/* Sort Menu */}
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="flex-1 sm:w-40 h-12 rounded-xl bg-card border-primary/10 text-xs font-bold">
+              <RefreshCw className="w-3.5 h-3.5 mr-2 opacity-50" />
+              <SelectValue placeholder="Sort By" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="createdAt">Recently Added</SelectItem>
+              <SelectItem value="date">Revision Date</SelectItem>
+            </SelectContent>
+          </Select>
 
           <Button onClick={handleCreateNew} className="w-full sm:w-auto rounded-xl h-12 font-black shadow-lg shadow-primary/20 px-6 bg-primary shrink-0">
             <Plus className="h-5 w-5 mr-2" /> Add Revision

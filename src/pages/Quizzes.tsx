@@ -1,7 +1,7 @@
 import { useQuizSessions } from "@/hooks/useQuizSessions";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useState, useMemo } from "react";
-import { Plus, Loader2, Save, Trash2, CalendarDays, Zap, Target, BookOpen, Tag, Edit3, X } from "lucide-react";
+import { Plus, Loader2, Save, Trash2, CalendarDays, Zap, Target, BookOpen, Tag, Edit3, X, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "sonner";
 
 export default function Quizzes() {
-  const { data: sessions, isLoading, addSession, updateSession, deleteSession } = useQuizSessions();
+  const [sortBy, setSortBy] = useState('date');
+  const { data: sessions, isLoading, addSession, updateSession, deleteSession } = useQuizSessions(sortBy);
   const { data: subjects } = useSubjects();
 
   // ── Session state ────────────────────────────────────────────────────────
@@ -175,9 +176,23 @@ export default function Quizzes() {
           <h1 className="font-heading text-3xl md:text-4xl font-black tracking-tight text-foreground">Weekly Assessments</h1>
           <p className="text-xs md:text-sm text-muted-foreground font-medium">Capture your performance across weekend drills</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto rounded-xl h-12 font-black shadow-lg shadow-primary/20 px-8 bg-primary">
-          <Plus className="h-5 w-5 mr-2" /> Add Session
-        </Button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+          {/* Sort Menu */}
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="flex-1 sm:w-40 h-12 rounded-xl bg-card border-primary/10 text-[10px] font-black uppercase tracking-widest">
+              <RefreshCw className="w-3.5 h-3.5 mr-2 opacity-50" />
+              <SelectValue placeholder="Sort By" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="createdAt">Recently Added</SelectItem>
+              <SelectItem value="date">Evaluation Date</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto rounded-xl h-12 font-black shadow-lg shadow-primary/20 px-8 bg-primary">
+            <Plus className="h-5 w-5 mr-2" /> Add Session
+          </Button>
+        </div>
       </div>
 
       {/* ── Sessions ────────────────────────────────────────────────────── */}

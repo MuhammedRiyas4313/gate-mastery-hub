@@ -81,7 +81,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 const DonutChartCard = ({ title, stats, icon: Icon }: any) => {
     const totalSeconds = stats?.totalSeconds || 0;
     const untaggedSeconds = stats?.untaggedSeconds || 0;
-    
+
     const chartData = useMemo(() => {
         if (!stats || totalSeconds === 0) return [];
         const slices = (stats.subjects || [])
@@ -144,79 +144,81 @@ const DonutChartCard = ({ title, stats, icon: Icon }: any) => {
     );
 };
 
-const IntegratedTimer = ({ seconds, isActive, isPaused, isStopping, handleStart, handlePause, handleResume, handleStop, handleReset, selectedSubject, setSelectedSubject, selectedChapter, setSelectedChapter, routeSubjects, routeChapters, chaptersLoading }: any) => {
+const IntegratedTimer = ({ seconds, isActive, isPaused, isStopping, handleStart, handlePause, handleResume, handleStop, handleReset, selectedSubject, setSelectedSubject, selectedChapter, setSelectedChapter, selectedActivity, setSelectedActivity, routeSubjects, routeChapters, chaptersLoading }: any) => {
+    const activityTypes = ['Lecture', 'Revision', 'PYQ', 'Quiz', 'DPP', 'Test Series'];
     return (
         <div className="bg-primary text-primary-foreground rounded-[3rem] shadow-3xl relative overflow-hidden flex flex-col border border-primary/10">
-             {/* ── TOP SECTION: TIMER DISPLAY (CENTERED STACK) ────────────────── */}
-             <div className="p-8 sm:p-10 relative z-10 flex flex-col items-center text-center">
-                 <div className="flex items-center gap-2 mb-4">
+            {/* ── TOP SECTION: TIMER DISPLAY (CENTERED STACK) ────────────────── */}
+            <div className="p-8 sm:p-10 relative z-10 flex flex-col items-center text-center">
+                <div className="flex items-center gap-2 mb-4">
                     <span className="text-[10px] font-black uppercase tracking-[0.6em] opacity-40 block">Active Session Time</span>
                     {isPaused && (
                         <span className="bg-amber-500/20 text-amber-500 text-[8px] font-black px-2 py-0.5 rounded-full animate-pulse border border-amber-500/20">PAUSED</span>
                     )}
-                 </div>
-                 
-                 <h2 className="font-mono text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter tabular-nums leading-none mb-8 text-white">
-                    {formatTime(seconds)}
-                 </h2>
+                </div>
 
-                 <div className="flex flex-wrap items-center justify-center gap-4 w-full max-w-2xl px-4">
+                <h2 className="font-mono text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter tabular-nums leading-none mb-8 text-white">
+                    {formatTime(seconds)}
+                </h2>
+
+                <div className="flex flex-wrap items-center justify-center gap-4 w-full max-w-2xl px-4">
                     {!isActive ? (
-                        <Button 
-                            onClick={handleStart} 
+                        <Button
+                            onClick={handleStart}
                             className="bg-white text-primary hover:bg-primary-foreground hover:scale-[1.03] font-black rounded-2xl px-10 py-6 h-auto shadow-xl transition-all text-xs tracking-[0.3em] min-w-[200px] border-none active:scale-95"
                         >
                             <Play className="h-5 w-5 fill-current mr-2" /> START FOCUS
                         </Button>
                     ) : (
-                             <div className="flex flex-wrap items-center justify-center gap-3 w-full">
-                                {isPaused ? (
-                                    <Button 
-                                        onClick={handleResume} 
-                                        className="bg-emerald-500 text-white hover:bg-emerald-600 font-black rounded-2xl px-10 py-6 h-auto shadow-xl shadow-emerald-500/30 active:scale-95 transition-all text-xs tracking-[0.3em] min-w-[200px] border-none"
-                                    >
-                                        <Play className="h-5 w-5 fill-current mr-2" /> RESUME
-                                    </Button>
-                                ) : (
-                                    <Button 
-                                        onClick={handlePause} 
-                                        className="bg-amber-500 text-white hover:bg-amber-600 font-black rounded-2xl px-10 py-6 h-auto shadow-xl shadow-amber-500/30 active:scale-95 transition-all text-xs tracking-[0.3em] min-w-[200px] border-none"
-                                    >
-                                        <Pause className="h-5 w-5 fill-current mr-2" /> PAUSE
-                                    </Button>
-                                )}
-                                
-                                <Button 
-                                    onClick={handleStop} 
-                                    disabled={isStopping}
-                                    className="bg-rose-500 text-white hover:bg-rose-600 font-black rounded-2xl px-10 py-6 h-auto shadow-xl shadow-rose-500/30 active:scale-95 transition-all text-xs tracking-[0.2em] min-w-[200px] border-none disabled:opacity-50 disabled:active:scale-100"
+                        <div className="flex flex-wrap items-center justify-center gap-3 w-full">
+                            {isPaused ? (
+                                <Button
+                                    onClick={handleResume}
+                                    className="bg-emerald-500 text-white hover:bg-emerald-600 font-black rounded-2xl px-10 py-6 h-auto shadow-xl shadow-emerald-500/30 active:scale-95 transition-all text-xs tracking-[0.3em] min-w-[200px] border-none"
                                 >
-                                    <CheckCircle2 className="h-5 w-5 mr-2" /> {isStopping ? 'SAVING...' : 'STOP SESSION'}
+                                    <Play className="h-5 w-5 fill-current mr-2" /> RESUME
                                 </Button>
-                                <Button 
-                                    onClick={handleReset} 
-                                    variant="outline" 
-                                    className="h-12 bg-white/10 hover:bg-white/20 border-white/20 rounded-2xl text-white font-black tracking-widest text-[10px] px-8"
+                            ) : (
+                                <Button
+                                    onClick={handlePause}
+                                    className="bg-amber-500 text-white hover:bg-amber-600 font-black rounded-2xl px-10 py-6 h-auto shadow-xl shadow-amber-500/30 active:scale-95 transition-all text-xs tracking-[0.3em] min-w-[200px] border-none"
                                 >
-                                    <RotateCcw className="h-4 w-4 mr-2" /> RESET
+                                    <Pause className="h-5 w-5 fill-current mr-2" /> PAUSE
                                 </Button>
-                             </div>
-                    )}
-                 </div>
-                 
-                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-white/[0.05] rounded-full blur-[100px] pointer-events-none animate-pulse" />
-             </div>
+                            )}
 
-             {/* ── BOTTOM SECTION: CONFIGURATION (BLACK) ───────────────────── */}
-             <div className="bg-black p-5 sm:p-8 relative z-10 group">
-                 <div className="flex flex-col lg:flex-row items-end gap-5 w-full">
-                     <div className="flex-1 space-y-2 w-full">
-                         <div className="flex items-center justify-between px-1.5">
-                             <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white opacity-40 flex items-center gap-2">
+                            <Button
+                                onClick={handleStop}
+                                disabled={isStopping}
+                                className="bg-rose-500 text-white hover:bg-rose-600 font-black rounded-2xl px-10 py-6 h-auto shadow-xl shadow-rose-500/30 active:scale-95 transition-all text-xs tracking-[0.2em] min-w-[200px] border-none disabled:opacity-50 disabled:active:scale-100"
+                            >
+                                <CheckCircle2 className="h-5 w-5 mr-2" /> {isStopping ? 'SAVING...' : 'STOP SESSION'}
+                            </Button>
+                            <Button
+                                onClick={handleReset}
+                                variant="outline"
+                                className="h-12 bg-white/10 hover:bg-white/20 border-white/20 rounded-2xl text-white font-black tracking-widest text-[10px] px-8"
+                            >
+                                <RotateCcw className="h-4 w-4 mr-2" /> RESET
+                            </Button>
+                        </div>
+                    )}
+                </div>
+
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-white/[0.05] rounded-full blur-[100px] pointer-events-none animate-pulse" />
+            </div>
+
+            {/* ── BOTTOM SECTION: CONFIGURATION (BLACK) ───────────────────── */}
+            <div className="bg-black p-5 sm:p-8 relative z-10 group">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 items-end gap-5 w-full">
+                    {/* Focus Module Selection */}
+                    <div className="space-y-2 w-full">
+                        <div className="flex items-center justify-between px-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white opacity-40 flex items-center gap-2">
                                 <Layers className="h-3 w-3" /> Focus Module
-                             </label>
-                         </div>
-                         <Select value={selectedSubject} onValueChange={v => { setSelectedSubject(v); setSelectedChapter(''); }}>
+                            </label>
+                        </div>
+                        <Select value={selectedSubject} onValueChange={v => { setSelectedSubject(v); setSelectedChapter(''); }}>
                             <SelectTrigger className="h-12 rounded-xl border-white/10 bg-white/5 font-bold px-5 text-sm text-white backdrop-blur-md hover:bg-white/10 hover:border-white/20 transition-all">
                                 <SelectValue placeholder="Select Subject" />
                             </SelectTrigger>
@@ -227,16 +229,17 @@ const IntegratedTimer = ({ seconds, isActive, isPaused, isStopping, handleStart,
                                     </SelectItem>
                                 ))}
                             </SelectContent>
-                         </Select>
-                     </div>
+                        </Select>
+                    </div>
 
-                     <div className="flex-1 space-y-2 w-full">
-                         <div className="flex items-center justify-between px-1.5">
-                             <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white opacity-40 flex items-center gap-2">
-                                 <BookOpen className="h-3 w-3" /> Current Chapter
-                             </label>
-                         </div>
-                         <Select value={selectedChapter} onValueChange={setSelectedChapter} disabled={!selectedSubject || chaptersLoading}>
+                    {/* Current Chapter Selection */}
+                    <div className="space-y-2 w-full">
+                        <div className="flex items-center justify-between px-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white opacity-40 flex items-center gap-2">
+                                <BookOpen className="h-3 w-3" /> Current Chapter
+                            </label>
+                        </div>
+                        <Select value={selectedChapter} onValueChange={setSelectedChapter} disabled={!selectedSubject || chaptersLoading}>
                             <SelectTrigger className="h-12 rounded-xl border-white/10 bg-white/5 font-black px-5 text-sm text-white backdrop-blur-md disabled:opacity-20 text-left hover:bg-white/10 hover:border-white/20 transition-all">
                                 <SelectValue placeholder={selectedSubject ? 'Select Chapter' : 'Subject First'} />
                             </SelectTrigger>
@@ -245,23 +248,59 @@ const IntegratedTimer = ({ seconds, isActive, isPaused, isStopping, handleStart,
                                     <SelectItem key={c._id} value={c._id} className="rounded-lg font-bold py-3.5 focus:bg-primary focus:text-white">{c.name}</SelectItem>
                                 ))}
                             </SelectContent>
-                         </Select>
-                     </div>
+                        </Select>
+                    </div>
 
-                     {(selectedSubject || selectedChapter) && (
-                         <div className="shrink-0 animate-in fade-in zoom-in-95 duration-300 w-full lg:w-auto">
-                            <button 
-                                onClick={() => { setSelectedSubject(''); setSelectedChapter(''); }}
-                                className="h-12 px-6 flex items-center justify-center gap-2 text-[9px] font-black tracking-widest text-rose-500/60 hover:text-rose-500 bg-rose-500/5 hover:bg-rose-500/10 rounded-xl transition-all group/clear active:scale-95 w-full lg:w-auto border border-rose-500/10"
-                            >
-                                <X className="h-3 w-3 group-hover/clear:rotate-90 transition-transform" /> CLEAR TAGS
-                            </button>
-                         </div>
-                     )}
-                 </div>
-                 
-                 <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-             </div>
+                    {/* Activity Type Selection */}
+                    <div className="space-y-2 w-full">
+                        <div className="flex items-center justify-between px-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white opacity-40 flex items-center gap-2">
+                                <Zap className="h-3 w-3" /> Activity Type
+                            </label>
+                        </div>
+                        <Select value={selectedActivity} onValueChange={setSelectedActivity}>
+                            <SelectTrigger className="h-12 rounded-xl border-white/10 bg-white/5 font-black px-5 text-sm text-white backdrop-blur-md hover:bg-white/10 hover:border-white/20 transition-all">
+                                <SelectValue placeholder="Select Activity" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl bg-zinc-900 border-white/5 text-white">
+                                {activityTypes.map((type) => (
+                                    <SelectItem key={type} value={type} className="rounded-lg font-bold py-3.5 focus:bg-primary focus:text-white">{type}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                {(selectedSubject || selectedChapter || selectedActivity !== 'Lecture') && (
+                    <div className="flex justify-end mt-4 animate-in fade-in zoom-in-95 duration-300">
+                        <button
+                            onClick={() => { setSelectedSubject(''); setSelectedChapter(''); setSelectedActivity('Lecture'); }}
+                            className="h-10 px-6 flex items-center justify-center gap-2 text-[9px] font-black tracking-widest text-rose-500/60 hover:text-rose-500 bg-rose-500/5 hover:bg-rose-500/10 rounded-xl transition-all group/clear active:scale-95 border border-rose-500/10"
+                        >
+                            <X className="h-3 w-3 group-hover/clear:rotate-90 transition-transform" /> CLEAR TAGS
+                        </button>
+                    </div>
+                )}
+
+                <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+            </div>
+        </div>
+    );
+};
+
+const ActivityPills = ({ activities }: { activities?: Record<string, number> }) => {
+    if (!activities) return null;
+    const items = Object.entries(activities).filter(([_, s]) => s > 0).sort((a,b) => b[1] - a[1]);
+    if (items.length === 0) return null;
+
+    return (
+        <div className="flex flex-wrap gap-1 mt-1 animate-in fade-in slide-in-from-left-1 duration-300">
+            {items.map(([name, seconds]) => (
+                <div key={name} className="flex items-center gap-1.5 bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10 hover:bg-primary/10 transition-colors">
+                    <span className="text-[7px] font-black uppercase text-primary/60 tracking-wider">{name}</span>
+                    <span className="text-[7px] font-bold text-primary/40 leading-none tabular-nums border-l border-primary/10 pl-1.5">{formatDisplay(seconds)}</span>
+                </div>
+            ))}
         </div>
     );
 };
@@ -282,7 +321,7 @@ const SessionList = ({ sessions }: { sessions: any[] }) => {
             <div className="space-y-1 max-h-[520px] overflow-y-auto pr-2 custom-scrollbar">
                 {sessions.slice(0, 50).map((session, i) => (
                     <div key={session._id} className="flex items-center justify-between p-3.5 rounded-2xl hover:bg-primary/5 group transition-all">
-                         <div className="flex items-center gap-4 min-w-0">
+                        <div className="flex items-center gap-4 min-w-0">
                             <div className="h-10 w-10 rounded-xl bg-background border border-primary/5 flex items-center justify-center text-lg shrink-0 shadow-sm group-hover:scale-110 transition-transform">
                                 {session.subject?.icon || '⏱️'}
                             </div>
@@ -291,11 +330,11 @@ const SessionList = ({ sessions }: { sessions: any[] }) => {
                                     {session.subject?.name || 'General Session'}
                                 </p>
                                 <p className="text-[9px] font-bold text-muted-foreground opacity-50 truncate">
-                                    {session.chapter?.name || 'Untagged Focus'}
+                                    {session.activityType} • {session.chapter?.name || 'Untagged Focus'}
                                 </p>
                             </div>
-                         </div>
-                         <div className="flex items-center gap-4 shrink-0 ml-4">
+                        </div>
+                        <div className="flex items-center gap-4 shrink-0 ml-4">
                             <div className="text-right">
                                 <p className="font-mono text-sm font-black text-primary leading-none">
                                     {formatDisplay(session.duration)}
@@ -304,10 +343,10 @@ const SessionList = ({ sessions }: { sessions: any[] }) => {
                                     {new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(session.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                 </p>
                             </div>
-                         </div>
+                        </div>
                     </div>
                 ))}
-                
+
                 {sessions.length === 0 && (
                     <div className="py-20 text-center opacity-30 flex flex-col items-center">
                         <Clock className="h-12 w-12 mb-4 text-muted-foreground" />
@@ -333,9 +372,9 @@ const SessionList = ({ sessions }: { sessions: any[] }) => {
             `}</style>
 
             {sessions.length > 10 && (
-                 <p className="text-center text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-30">
+                <p className="text-center text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-30">
                     Scroll to view more entries
-                 </p>
+                </p>
             )}
         </div>
     );
@@ -344,7 +383,7 @@ const SessionList = ({ sessions }: { sessions: any[] }) => {
 const BreakdownListCard = ({ title, stats, icon: Icon }: any) => {
     const totalSeconds = stats?.totalSeconds || 0;
     const untaggedSeconds = stats?.untaggedSeconds || 0;
-    
+
     const displaySubjects = useMemo(() => {
         const list = [...(stats?.subjects || [])];
         if (untaggedSeconds > 0) {
@@ -353,7 +392,8 @@ const BreakdownListCard = ({ title, stats, icon: Icon }: any) => {
                 name: 'General Session',
                 icon: '⏱️',
                 totalStudySeconds: untaggedSeconds,
-                color: UNTAGGED_COLOR
+                color: UNTAGGED_COLOR,
+                activities: stats?.untaggedActivities
             });
         }
         return list;
@@ -377,7 +417,7 @@ const BreakdownListCard = ({ title, stats, icon: Icon }: any) => {
                         const barColor = s.color || CHART_COLORS[i % CHART_COLORS.length];
                         const pct = totalSeconds > 0 ? (s.totalStudySeconds / totalSeconds) * 100 : 0;
                         const isRealSubject = s._id !== 'untagged';
-                        
+
                         return (
                             <div key={s._id} className={`space-y-3 ${isRealSubject ? 'bg-primary/[0.03] p-5 rounded-3xl border border-primary/5' : ''}`}>
                                 <div className="flex items-center justify-between text-[11px] font-black">
@@ -387,32 +427,85 @@ const BreakdownListCard = ({ title, stats, icon: Icon }: any) => {
                                     </span>
                                     <span className="tabular-nums text-primary">{formatDisplay(s.totalStudySeconds)}</span>
                                 </div>
+                                <ActivityPills activities={s.activities} />
                                 <div className="h-1.5 bg-primary/5 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full transition-all duration-700"
-                                        style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                                     <div className="h-full rounded-full transition-all duration-700" 
+                                          style={{ width: `${pct}%`, backgroundColor: barColor }} />
                                 </div>
 
                                 {/* NESTED CHAPTER BREAKDOWN */}
                                 {isRealSubject && (
                                     <div className="pl-4 ml-1 border-l border-primary/10 mt-3 space-y-2">
                                         {(s.chapters || []).map((ch: any) => (
-                                            <div key={ch._id} className="flex items-center justify-between text-[9px] font-bold text-muted-foreground/80">
-                                                <span className="truncate flex items-center gap-2">
-                                                    <BookOpen className="h-2 w-2 opacity-30" /> {ch.name}
-                                                </span>
-                                                <span className="tabular-nums opacity-60">{formatDisplay(ch.totalStudySeconds)}</span>
+                                            <div key={ch._id} className="space-y-1">
+                                                <div className="flex items-center justify-between text-[9px] font-bold text-muted-foreground/80">
+                                                    <span className="truncate flex items-center gap-2">
+                                                        <BookOpen className="h-2 w-2 opacity-30" /> {ch.name}
+                                                    </span>
+                                                    <span className="tabular-nums opacity-60">{formatDisplay(ch.totalStudySeconds)}</span>
+                                                </div>
+                                                <div className="pl-4">
+                                                    <ActivityPills activities={ch.activities} />
+                                                </div>
                                             </div>
                                         ))}
                                         {(s.untaggedChapterSeconds || 0) > 0 && (
-                                            <div className="flex items-center justify-between text-[9px] font-bold text-muted-foreground/60 italic">
-                                                <span className="truncate flex items-center gap-2 opacity-50">
-                                                    <Clock className="h-2 w-2 opacity-30" /> General Subject Focus
-                                                </span>
-                                                <span className="tabular-nums opacity-60">{formatDisplay(s.untaggedChapterSeconds)}</span>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center justify-between text-[9px] font-bold text-muted-foreground/60 italic">
+                                                    <span className="truncate flex items-center gap-2 opacity-50">
+                                                        <Clock className="h-2 w-2 opacity-30" /> General Subject Focus
+                                                    </span>
+                                                    <span className="tabular-nums opacity-60">{formatDisplay(s.untaggedChapterSeconds)}</span>
+                                                </div>
+                                                <div className="pl-4 opacity-50 grayscale scale-95 origin-left">
+                                                    <ActivityPills activities={s.untaggedChapterActivities} />
+                                                </div>
                                             </div>
                                         )}
                                     </div>
                                 )}
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+        </div>
+    );
+};
+
+const ActivityDistributionCard = ({ title, stats, icon: Icon }: any) => {
+    const activities = stats?.activities || {};
+    const sortedActivities = Object.entries(activities).sort((a: any, b: any) => b[1] - a[1]);
+    const totalSeconds = stats?.totalSeconds || 0;
+
+    return (
+        <div className="bg-card border border-primary/5 rounded-[2.5rem] p-6 sm:p-8 shadow-sm space-y-5">
+            <div className="flex items-center justify-between border-b border-primary/5 pb-4">
+                <div className="flex items-center gap-3">
+                    <Icon className="h-4 w-4 text-primary" />
+                    <h3 className="text-xs font-black uppercase tracking-widest text-foreground">{title}</h3>
+                </div>
+            </div>
+            <div className="space-y-4">
+                {sortedActivities.length === 0 ? (
+                    <p className="text-[10px] text-center text-muted-foreground opacity-40 font-bold uppercase py-10">No focus metrics recorded.</p>
+                ) : (
+                    sortedActivities.map(([name, seconds]: any, i: number) => {
+                        const pct = totalSeconds > 0 ? (seconds / totalSeconds) * 100 : 0;
+                        const color = CHART_COLORS[i % CHART_COLORS.length];
+                        return (
+                            <div key={name} className="space-y-2">
+                                <div className="flex items-center justify-between text-[11px] font-black">
+                                    <span className="truncate opacity-70 flex items-center gap-2">
+                                        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                                        {name}
+                                    </span>
+                                    <span className="tabular-nums text-primary">{formatDisplay(seconds)}</span>
+                                </div>
+                                <div className="h-1.5 bg-primary/5 rounded-full overflow-hidden">
+                                     <div className="h-full rounded-full transition-all duration-700" 
+                                          style={{ width: `${pct}%`, backgroundColor: color }} />
+                                </div>
                             </div>
                         );
                     })
@@ -436,10 +529,10 @@ export default function TimerPage() {
     const [seconds, setSeconds] = useState(0);
     const [selectedSubject, setSelectedSubject] = useState('');
     const [selectedChapter, setSelectedChapter] = useState('');
-
+    const [selectedActivity, setSelectedActivity] = useState('Lecture');
     const { data: routeSubjects } = useSubjects();
     const { data: routeChapters, isLoading: chaptersLoading } = useChapters(selectedSubject);
-    
+
     // NEW TimerStats structure: { allTime: DailyTimerStats, daily: DailyTimerStats[] }
     const { data: statsData } = useTimerStats();
     const queryClient = useQueryClient();
@@ -451,6 +544,7 @@ export default function TimerPage() {
         if (activeTimer) {
             if (activeTimer.subjectId) setSelectedSubject(activeTimer.subjectId);
             if (activeTimer.chapterId) setSelectedChapter(activeTimer.chapterId);
+            if (activeTimer.activityType) setSelectedActivity(activeTimer.activityType);
         }
     }, [activeTimer]);
 
@@ -478,14 +572,14 @@ export default function TimerPage() {
         }
 
         const update = () => {
-          const accumulated = activeTimer.accumulatedTime || 0;
-          if (activeTimer.isPaused) {
-            setSeconds(Math.floor(accumulated / 1000));
-            return;
-          }
-          const lastStarted = new Date(activeTimer.lastStartedTime).getTime();
-          const now = Date.now();
-          setSeconds(Math.floor((accumulated + (now - lastStarted)) / 1000));
+            const accumulated = activeTimer.accumulatedTime || 0;
+            if (activeTimer.isPaused) {
+                setSeconds(Math.floor(accumulated / 1000));
+                return;
+            }
+            const lastStarted = new Date(activeTimer.lastStartedTime).getTime();
+            const now = Date.now();
+            setSeconds(Math.floor((accumulated + (now - lastStarted)) / 1000));
         };
 
         update();
@@ -493,13 +587,13 @@ export default function TimerPage() {
         return () => clearInterval(interval);
     }, [activeTimer]);
 
-    const handleStart = () => { 
-        startGlobalTimer(selectedSubject || undefined, selectedChapter || undefined);
+    const handleStart = () => {
+        startGlobalTimer(selectedSubject || undefined, selectedChapter || undefined, selectedActivity);
     };
 
-    const handleReset = () => { 
+    const handleReset = () => {
         stopGlobalTimer();
-        setSeconds(0); 
+        setSeconds(0);
     };
 
     const saveSessionMutation = useMutation({
@@ -516,11 +610,11 @@ export default function TimerPage() {
 
             toast.success('Study session recorded!');
             // Reset selectedDate so it will auto-select the latest date from fresh stats
-            setSelectedDate(''); 
+            setSelectedDate('');
             handleReset();
         },
         onError: () => {
-             toast.error('Failed to save session.'); 
+            toast.error('Failed to save session.');
         }
     });
 
@@ -532,6 +626,7 @@ export default function TimerPage() {
         saveSessionMutation.mutate({
             subjectId: activeTimer?.subjectId || undefined,
             chapterId: activeTimer?.chapterId || undefined,
+            activityType: activeTimer?.activityType || selectedActivity,
             duration: seconds,
             startTime: startTime,
             endTime: new Date(),
@@ -548,7 +643,7 @@ export default function TimerPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
                 {/* LARGE INTEGRATED TIMER (8/12) */}
                 <div className="lg:col-span-8">
-                    <IntegratedTimer 
+                    <IntegratedTimer
                         seconds={seconds}
                         isActive={isActive}
                         isPaused={activeTimer?.isPaused}
@@ -562,6 +657,8 @@ export default function TimerPage() {
                         setSelectedSubject={setSelectedSubject}
                         selectedChapter={selectedChapter}
                         setSelectedChapter={setSelectedChapter}
+                        selectedActivity={selectedActivity}
+                        setSelectedActivity={setSelectedActivity}
                         routeSubjects={routeSubjects}
                         routeChapters={routeChapters}
                         chaptersLoading={chaptersLoading}
@@ -577,7 +674,7 @@ export default function TimerPage() {
 
             {/* ── ROW 2: Statistics & Activity Log ───────────────────────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                
+
                 {/* BREAKDOWNS (8/12 - Perfectly aligned with Timer) */}
                 <div className="lg:col-span-8 space-y-4">
                     <div className="flex items-center justify-between px-2 mb-2">
@@ -595,8 +692,10 @@ export default function TimerPage() {
                         </Select>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <BreakdownListCard title="Today's Performance" stats={dailyStats} icon={CalendarDays} />
-                        <BreakdownListCard title="All-Time Cumulative" stats={allTimeStats} icon={Globe} />
+                        <BreakdownListCard title="Today's Subjects" stats={dailyStats} icon={CalendarDays} />
+                        <ActivityDistributionCard title="Today's Activity Type" stats={dailyStats} icon={Zap} />
+                        <BreakdownListCard title="All-Time Subjects" stats={allTimeStats} icon={Globe} />
+                        <ActivityDistributionCard title="All-Time Activity Type" stats={allTimeStats} icon={BarChart3} />
                     </div>
                 </div>
 

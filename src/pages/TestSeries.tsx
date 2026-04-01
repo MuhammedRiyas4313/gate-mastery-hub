@@ -1,7 +1,7 @@
 import { useTestSeries } from "@/hooks/useTestSeries";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useState, useMemo } from "react";
-import { Plus, Loader2, Save, Trash2, Calendar as CalendarIcon, BookOpen, Layers, CalendarDays, Trophy, Target, TrendingUp, Settings2, Award, Tag } from "lucide-react";
+import { Plus, Loader2, Save, Trash2, Calendar as CalendarIcon, BookOpen, Layers, CalendarDays, Trophy, Target, TrendingUp, Settings2, Award, Tag, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -20,12 +20,14 @@ export default function TestSeries() {
   const [filterType, setFilterType] = useState('all');
   const [filterSubject, setFilterSubject] = useState('all');
   const [filterChapter, setFilterChapter] = useState('all');
+  const [sortBy, setSortBy] = useState('date');
 
   const { data: tests, isLoading, isFetching, addTestSeries, updateTestSeries, deleteTestSeries } = useTestSeries({
     status: filterStatus,
     type: filterType,
     subjectId: filterSubject,
     chapterId: filterChapter,
+    sortBy: sortBy,
   });
   const { data: subjects } = useSubjects();
 
@@ -228,6 +230,18 @@ export default function TestSeries() {
               </SelectContent>
             </Select>
           )}
+
+          {/* Sort Menu */}
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="flex-1 sm:w-40 h-12 rounded-xl bg-card border-primary/10 text-xs font-bold">
+              <RefreshCw className="w-3.5 h-3.5 mr-2 opacity-50" />
+              <SelectValue placeholder="Sort By" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="createdAt">Recently Added</SelectItem>
+              <SelectItem value="date">Test/Added Date</SelectItem>
+            </SelectContent>
+          </Select>
 
           <Button onClick={handleCreateNew} className="w-full sm:w-auto rounded-xl h-12 font-black shadow-lg shadow-primary/20 px-6 bg-primary shrink-0">
             <Plus className="h-5 w-5 mr-2" /> New Test

@@ -11,8 +11,13 @@ export interface DailyTimerStats {
     icon?: string;
     color?: string;
     totalStudySeconds: number;
-    chapters: { _id: string; name: string; totalStudySeconds: number }[];
+    chapters: { _id: string; name: string; totalStudySeconds: number; activities?: Record<string, number> }[];
+    untaggedChapterSeconds?: number;
+    activities?: Record<string, number>;
+    untaggedChapterActivities?: Record<string, number>;
   }[];
+  activities?: Record<string, number>;
+  untaggedActivities?: Record<string, number>;
 }
 
 export interface Session {

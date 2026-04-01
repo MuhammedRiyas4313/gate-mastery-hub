@@ -116,6 +116,7 @@ interface StoreState {
     startTime: string; 
     subjectId?: string; 
     chapterId?: string;
+    activityType?: string;
     isPaused: boolean;
     accumulatedTime: number; 
     lastStartedTime: string;
@@ -165,7 +166,7 @@ interface StoreState {
   setGateExamDate: (date: string) => void;
 
   // Timer
-  startTimer: (subjectId?: string, chapterId?: string) => void;
+  startTimer: (subjectId?: string, chapterId?: string, activityType?: string) => void;
   pauseTimer: () => void;
   resumeTimer: () => void;
   stopTimer: () => void;
@@ -345,7 +346,7 @@ export const useStore = create<StoreState>()(
       setGateExamDate: (date) => set({ gateExamDate: date }),
 
       // ── Timer ──
-      startTimer: (subjectId, chapterId) => {
+      startTimer: (subjectId, chapterId, activityType) => {
         const now = new Date().toISOString();
         set({
           activeTimer: {
@@ -353,6 +354,7 @@ export const useStore = create<StoreState>()(
             lastStartedTime: now,
             subjectId,
             chapterId,
+            activityType,
             isPaused: false,
             accumulatedTime: 0,
           }

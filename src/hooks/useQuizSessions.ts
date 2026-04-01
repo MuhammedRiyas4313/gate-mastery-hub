@@ -1,13 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/rest-client';
 
-export function useQuizSessions() {
+export function useQuizSessions(sortBy?: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['quiz-sessions'],
+    queryKey: ['quiz-sessions', { sortBy }],
     queryFn: async () => {
-      const { data } = await api.get('/quiz-sessions');
+      const params = new URLSearchParams();
+      if (sortBy) params.set('sortBy', sortBy);
+      const qs = params.toString();
+      const { data } = await api.get(`/quiz-sessions${qs ? `?${qs}` : ''}`);
       return data;
     },
   });
