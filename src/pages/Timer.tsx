@@ -23,6 +23,10 @@ import {
 } from 'recharts';
 
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
 import {
     Select,
     SelectContent,
@@ -145,7 +149,7 @@ const DonutChartCard = ({ title, stats, icon: Icon }: any) => {
 };
 
 const IntegratedTimer = ({ seconds, isActive, isPaused, isStopping, handleStart, handlePause, handleResume, handleStop, handleReset, selectedSubject, setSelectedSubject, selectedChapter, setSelectedChapter, selectedActivity, setSelectedActivity, routeSubjects, routeChapters, chaptersLoading }: any) => {
-    const activityTypes = ['Lecture', 'Revision', 'PYQ', 'Quiz', 'DPP', 'Test Series'];
+    const activityTypes = ['Lecture', 'Revision', 'PYQ', 'Quiz', 'DPP', 'Test Series', 'Question Practising'];
     return (
         <div className="bg-primary text-primary-foreground rounded-[3rem] shadow-3xl relative overflow-hidden flex flex-col border border-primary/10">
             {/* ── TOP SECTION: TIMER DISPLAY (CENTERED STACK) ────────────────── */}
@@ -538,6 +542,7 @@ export default function TimerPage() {
     const queryClient = useQueryClient();
 
     const [selectedDate, setSelectedDate] = useState<string>('');
+    const [calendarOpen, setCalendarOpen] = useState(false);
 
     // Restore selection from active timer if it exists
     useEffect(() => {
@@ -548,12 +553,18 @@ export default function TimerPage() {
         }
     }, [activeTimer]);
 
-    // Set default selectedDate to latest tracked day
+    // Set default selectedDate to today
     useEffect(() => {
-        if (statsData?.daily && statsData.daily.length > 0 && !selectedDate) {
-            setSelectedDate(statsData.daily[0].date!);
+        if (!selectedDate) {
+            const today = new Date();
+            const utc = today.getTime() + (today.getTimezoneOffset() * 60000);
+            const istTime = new Date(utc + (3600000 * 5.5));
+            const year = istTime.getFullYear();
+            const month = String(istTime.getMonth() + 1).padStart(2, '0');
+            const day = String(istTime.getDate()).padStart(2, '0');
+            setSelectedDate(`${year}-${month}-${day}`);
         }
-    }, [statsData, selectedDate]);
+    }, [selectedDate]);
 
     // Active daily stats
     const dailyStats = useMemo(() => {
@@ -679,17 +690,37 @@ export default function TimerPage() {
                 <div className="lg:col-span-8 space-y-4">
                     <div className="flex items-center justify-between px-2 mb-2">
                         <h2 className="text-xl font-black tracking-tight">Focus Performance</h2>
-                        <Select value={selectedDate} onValueChange={setSelectedDate}>
-                            <SelectTrigger className="w-[160px] h-8 rounded-xl border-primary/10 bg-card/40 backdrop-blur-md font-bold px-3 text-[9px] uppercase tracking-widest">
-                                <CalendarDays className="h-3 w-3 mr-2 text-primary" />
-                                <SelectValue placeholder="Date" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                                {statsData?.daily?.map(day => (
-                                    <SelectItem key={day.date} value={day.date!} className="rounded-lg text-xs font-bold">{day.date}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className={cn(
+                                        "w-[160px] h-8 rounded-xl border-primary/10 bg-card/40 backdrop-blur-md font-bold px-3 text-[9px] uppercase tracking-widest justify-start text-foreground hover:bg-card hover:text-foreground",
+                                        !selectedDate && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarDays className="h-3 w-3 mr-2 text-primary shrink-0" />
+                                    {selectedDate ? format(parseISO(selectedDate), "MMM dd, yyyy") : <span>Pick a date</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 rounded-2xl border-primary/10 bg-zinc-950 shadow-2xl" align="end">
+                                <Calendar
+                                    mode="single"
+                                    selected={selectedDate ? new Date(selectedDate + "T00:00:00") : undefined}
+                                    onSelect={(date) => {
+                                        if (date) {
+                                            const y = date.getFullYear();
+                                            const m = String(date.getMonth() + 1).padStart(2, '0');
+                                            const d = String(date.getDate()).padStart(2, '0');
+                                            setSelectedDate(`${y}-${m}-${d}`);
+                                            setCalendarOpen(false);
+                                        }
+                                    }}
+                                    initialFocus
+                                    className="p-3 bg-zinc-950 text-white rounded-2xl"
+                                />
+                            </PopoverContent>
+                        </Popover>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <BreakdownListCard title="Today's Subjects" stats={dailyStats} icon={CalendarDays} />
